@@ -1,6 +1,7 @@
 <div align="center">
 
-# ITD Go SDK
+<img width="400" alt="Image" src="https://github.com/user-attachments/assets/8517c4b6-fd5f-498d-befc-8896976453dd" />
+
 
 **Неофициальный Go SDK для работы с API социальной сети** [итд.com](https://итд.com)
 
