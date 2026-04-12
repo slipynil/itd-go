@@ -60,8 +60,10 @@ func (p *Posts) Get(ctx context.Context, postID string) (*types.Post, error) {
 func (p *Posts) Create(ctx context.Context, content string, attachmentIDs ...string) (*types.Post, error) {
 
 	payload := map[string]interface{}{
-		"content":       content,
-		"attachmentIds": attachmentIDs,
+		"content": content,
+	}
+	if len(attachmentIDs) > 0 {
+		payload["attachmentIds"] = attachmentIDs
 	}
 
 	req, err := p.transport.NewRequest(ctx, "POST", "/api/posts", payload)
@@ -188,8 +190,9 @@ func (p *Posts) Repost(ctx context.Context, postID string, content string) (*typ
 func (p *Posts) Vote(ctx context.Context, postID string, optionIDs ...string) (*types.Poll, error) {
 	path := fmt.Sprintf("/api/posts/%s/poll/vote", postID)
 
-	payload := map[string]interface{}{
-		"optionIds": optionIDs,
+	payload := map[string]interface{}{}
+	if len(optionIDs) > 0 {
+		payload["optionIds"] = optionIDs
 	}
 
 	req, err := p.transport.NewRequest(ctx, "POST", path, payload)
