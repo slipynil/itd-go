@@ -27,6 +27,9 @@ type Client struct {
 
 	// User - API для работы с пользователями
 	User types.UserAPI
+
+	// Comments - API для работы с комментариями
+	Comments types.CommentsAPI
 }
 
 // New создаёт и инициализирует новый экземпляр ITD клиента.
@@ -38,7 +41,7 @@ type Client struct {
 //
 // Возвращает инициализированный клиент или ошибку при проблемах с аутентификацией.
 func New(ctx context.Context, cfg Config) (*Client, error) {
-	if cfg.WithoutBanner {
+	if !cfg.WithoutBanner {
 		printBanner(SDK_VERSION, os.Stdout)
 	}
 
@@ -55,8 +58,9 @@ func New(ctx context.Context, cfg Config) (*Client, error) {
 	}
 
 	return &Client{
-		Posts: root.Posts,
-		User:  root.User,
+		Posts:    root.Posts,
+		User:     root.User,
+		Comments: root.Comments,
 	}, nil
 }
 

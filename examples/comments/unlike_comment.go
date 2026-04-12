@@ -6,8 +6,7 @@ import (
 	"os"
 
 	"github.com/joho/godotenv"
-	"github.com/k0kubun/pp"
-	itd "github.com/slipynil/itd-go"
+	itdgo "github.com/slipynil/itd-go"
 )
 
 func main() {
@@ -19,17 +18,22 @@ func main() {
 	refreshToken := os.Getenv("REFRESH_TOKEN")
 	userAgent := os.Getenv("USER_AGENT")
 
-	cfg := itd.Config{
+	cfg := itdgo.Config{
 		RefreshToken: refreshToken,
 		UserAgent:    userAgent,
 	}
 	ctx := context.Background()
 
-	client, err := itd.New(ctx, cfg)
+	client, err := itdgo.New(ctx, cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
-	feed := client.Posts.NewFeed(ctx, 1, "popular")
-	posts, _ := feed.Next()
-	pp.Println(posts)
+
+	commentID := "your-comment-id-here"
+	err = client.Comments.Unlike(ctx, commentID)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.Println("Лайк успешно убран")
 }

@@ -10,21 +10,22 @@ import (
 	"time"
 
 	"github.com/slipynil/itd-go/internal/dto"
-	"github.com/slipynil/itd-go/internal/errors"
-	"github.com/slipynil/itd-go/internal/pkg"
+	"github.com/slipynil/itd-go/internal/pkg/errors"
+	pkg "github.com/slipynil/itd-go/internal/pkg/jwt"
 )
 
-// Auth Client реализует Provider используя refresh token для аутентификации
+// Client реализует Provider, используя refresh token для аутентификации.
+// Автоматически обновляет access token при истечении срока действия.
 type Client struct {
-	mu          sync.RWMutex // мютех для потокобезопасности запроса
-	BaseURL     string       // базовый URL для запросов
-	HttpClient  *http.Client // http клиент для запросов
-	accessToken string       // токен, который возвращает сервер
-	tokenExpiry time.Time    // время истечения токена
-	userID      string       // id пользователя
+	mu          sync.RWMutex // мютекс для потокобезопасного доступа к токену
+	BaseURL     string       // базовый URL для запросов аутентификации
+	HttpClient  *http.Client // HTTP клиент для выполнения запросов
+	accessToken string       // текущий access token
+	tokenExpiry time.Time    // время истечения срока действия токена
+	userID      string       // ID аутентифицированного пользователя
 }
 
-// NewRefreshTokenAuth создает нового провайдера аутентификации через refresh token
+// New создаёт нового провайдера аутентификации через refresh token.
 func New(cfg Config) (*Client, error) {
 
 	auth := &Client{

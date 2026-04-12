@@ -2,6 +2,32 @@
 
 Неофициальный Go SDK для работы с API социальной сети [итд.com](https://итд.com)
 
+## Текущие реализованные методы
+
+### Posts API
+```go
+// Итераторы для постраничной загрузки
+feed := client.Posts.NewFeed(ctx, 20, "popular")           // Лента постов
+userPosts := client.Posts.NewUserPosts(ctx, "username", 20, "new") // Посты пользователя
+
+// Работа с постами
+post, err := client.Posts.Get(ctx, postID)                 // Получение поста
+post, err := client.Posts.Create(ctx, "Текст", nil)        // Создание поста
+post, err := client.Posts.Repost(ctx, postID, "Комментарий") // Репост
+err := client.Posts.Delete(ctx, postID)                    // Удаление поста
+
+// Взаимодействие
+result, err := client.Posts.Like(ctx, postID)              // Лайк
+result, err := client.Posts.Unlike(ctx, postID)            // Убрать лайк
+poll, err := client.Posts.Vote(ctx, postID, optionIDs...)  // Голосование в опросе
+view, err := client.Posts.View(ctx, postID)                // Отметить просмотр
+```
+
+### User API
+```go
+user, err := client.User.Me(ctx)                           // Текущий пользователь
+user, err := client.User.Get(ctx, "username")              // Получение пользователя
+```
 ## Установка
 
 ```bash
@@ -15,6 +41,7 @@ package main
 
 import (
     "context"
+    "fmt"
     "log"
 
     itd "github.com/slipynil/itd-go"
@@ -33,22 +60,18 @@ func main() {
     }
 
     // Создать итератор для ленты постов
-    feed := client.Posts.NewFeed(ctx, 10, "popular")
+    feed := client.Posts.NewFeed(ctx, 20, "popular")
 
     // Получить первую страницу постов
-    posts, err := feed.Next()
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    // Проверить, есть ли ещё посты
-    if feed.HasMore() {
-        // Получить следующую страницу
-        morePosts, err := feed.Next()
+    for feed.HasMore() {
+        posts, err := feed.Next()
         if err != nil {
             log.Fatal(err)
         }
-        _ = morePosts
+
+        for _, post := range posts {
+            fmt.Printf("%s: %s\n", post.Author.DisplayName, post.Content)
+        }
     }
 }
 ```
@@ -75,41 +98,33 @@ type Config struct {
 
 ### Posts
 
-Работа с постами через паттерн Iterator:
-
-```go
-// Создать итератор для ленты постов
-// limit - количество постов на страницу (рекомендуется 10-50)
-// sort - тип сортировки: "popular", "new", "following"
-feed := client.Posts.NewFeed(ctx, limit, sort)
-
-// Проверить, есть ли ещё посты для загрузки
-hasMore := feed.HasMore()
-
-// Получить следующую страницу постов
-posts, err := feed.Next()
-```
-
-**Пример использования итератора:**
-
-```go
-feed := client.Posts.NewFeed(ctx, 20, "popular")
-
-for feed.HasMore() {
-    posts, err := feed.Next()
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    for _, post := range posts {
-        fmt.Printf("%s: %s\n", post.Author.DisplayName, post.Content)
-    }
-}
-```
+- `NewFeed(ctx, limit, sort)` — итератор для ленты постов (sort: "popular", "new", "following")
+- `NewUserPosts(ctx, username, limit, sort)` — итератор для постов пользователя (sort: "new", "popular")
+- `Get(ctx, postID)` — получение поста по ID
+- `Create(ctx, content, attachmentIDs)` — создание поста
+- `Delete(ctx, postID)` — удаление поста
+- `Like(ctx, postID)` — лайк на пост
+- `Unlike(ctx, postID)` — убрать лайк
+- `Repost(ctx, postID, content)` — репост с опциональным комментарием
+- `Vote(ctx, postID, optionIDs...)` — голосование в опросе
+- `View(ctx, postID)` — отметить пост как просмотренный
 
 ### User
 
-API для работы с пользователями находится в разработке.
+- `Me(ctx)` — получение информации о текущем пользователе
+- `Get(ctx, username)` — получение информации о пользователе по username
+
+**Примечание:** User API находится в разработке. Доступны только базовые методы получения информации.
+
+### Comments
+
+**Примечание:** Comments API находится в разработке.
+
+### Итераторы
+
+Все итераторы (`NewFeed`, `NewUserPosts`) реализуют интерфейс `FeedIterator`:
+- `HasMore()` — проверка наличия следующей страницы
+- `Next()` — загрузка следующей страницы постов
 
 ## Архитектура
 
@@ -120,29 +135,60 @@ itd-go/
 ├── client.go           — публичная точка входа
 ├── config.go           — публичная конфигурация
 │
+├── types/              — публичные интерфейсы и типы данных
+│   ├── interfaces.go   — API интерфейсы (PostsAPI, UserAPI, CommentsAPI)
+│   ├── post.go         — структуры постов
+│   ├── user.go         — структуры пользователей
+│   └── comment.go      — структуры комментариев
+│
 └── internal/
     ├── root/           — создание HTTP клиента, установка заголовков
     ├── auth/           — управление токенами, аутентификация
     ├── transport/      — HTTP механика, middleware
-    └── api/            — группы методов (posts, user, и т.д.)
+    └── api/            — группы методов (posts, user, comments)
+        └── posts/
+            ├── posts.go        — публичные методы API
+            ├── iterator.go     — generic iterator для пагинации
+            ├── feediterator.go — фабрики итераторов
+            ├── getpostid.go    — внутренние методы запросов
+            └── dto.go          — внутренние структуры ответов
 ```
+
+### Generic Iterator Pattern
+
+Для устранения дублирования кода используется generic iterator:
+
+```go
+type Iterator[T any] interface {
+    HasMore() bool
+    Next() ([]T, error)
+}
+```
+
+Это позволяет переиспользовать логику пагинации для разных типов данных (посты, комментарии и т.д.).
 
 ### Поток запроса
 
 ```
 client.Posts.NewFeed(ctx, limit, sort)
-    → создание feedIterator
+    → newFeedIterator()
+        → newPaginatedIterator[types.Post](ctx, fetchFunc)
     → iterator.Next()
-        → transport.NewRequest()
-        → transport.Do()
-            → HTTP клиент с middleware цепочкой:
-                1. Root Transport (Origin, Referer, User-Agent)
-                2. Status Check Middleware (проверка статуса ≥400)
-                3. Auth Middleware (добавление Authorization токена)
-            → отправка запроса
-            → декодирование JSON ответа
-        → обновление cursor и hasMore
+        → fetchFunc(ctx, cursor)
+            → getFeed(ctx, limit, cursor, sort)
+                → transport.NewRequest()
+                → transport.Do()
+                    → Middleware цепочка:
+                        1. Root Transport (Origin, Referer, User-Agent)
+                        2. Status Check (проверка статуса ≥400)
+                        3. Auth Middleware (Authorization токен)
+                    → HTTP запрос
+                → JSON декодирование
+            → возврат (posts, nextCursor, hasMore)
+        → обновление состояния итератора
         → возврат постов
+
+Аналогично для NewUserPosts() с getUserPosts() вместо getFeed()
 ```
 
 ### Middleware цепочка
@@ -167,10 +213,17 @@ if err != nil {
 
 ## Примеры
 
-Больше примеров использования можно найти в директории [examples/](examples/):
+Примеры использования находятся в директории `examples/posts/`:
 
-- [examples/get_posts/](examples/get_posts/) — базовое получение постов через итератор
-- [examples/hasMore/](examples/hasMore/) — пример использования HasMore() для постраничной загрузки
+- `showFeed.go` — получение ленты постов через итератор
+- `showUserPosts.go` — получение постов пользователя через итератор
+- `getPost.go` — получение поста по ID
+- `createPost.go` — создание нового поста
+- `deletePost.go` — удаление поста
+- `like.go` — лайк на пост
+- `unlike.go` — убрать лайк
+- `repost.go` — репост поста
+- `vote.go` — голосование в опросе
 
 ## Требования
 

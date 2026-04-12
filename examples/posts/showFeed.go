@@ -8,7 +8,8 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/k0kubun/pp"
-	itd "github.com/slipynil/itd-go"
+	itdgo "github.com/slipynil/itd-go"
+	"github.com/slipynil/itd-go/types"
 )
 
 func main() {
@@ -19,18 +20,18 @@ func main() {
 	refreshToken := os.Getenv("REFRESH_TOKEN")
 	userAgent := os.Getenv("USER_AGENT")
 
-	cfg := itd.Config{
+	cfg := itdgo.Config{
 		RefreshToken: refreshToken,
 		UserAgent:    userAgent,
 	}
 	ctx := context.Background()
 
-	client, err := itd.New(ctx, cfg)
+	client, err := itdgo.New(ctx, cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	feed := client.Posts.NewFeed(ctx, 10, "popular")
+	feed := client.Posts.NewFeed(ctx, types.FeedTabPopular, 10)
 
 	timer := time.NewTicker(5 * time.Second)
 	defer timer.Stop()
@@ -46,7 +47,7 @@ func main() {
 		}
 
 		for _, post := range posts {
-			pp.Println(post.Author.DisplayName, post.Content)
+			pp.Println(post)
 		}
 	}
 }

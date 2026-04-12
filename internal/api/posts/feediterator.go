@@ -3,39 +3,34 @@ package posts
 import (
 	"context"
 
+	"github.com/slipynil/itd-go/internal/pkg/iterator"
 	"github.com/slipynil/itd-go/types"
 )
 
-type feedIterator struct {
-	client  *Posts
-	ctx     context.Context
-	limit   int
-	sort    string
-	cursor  string
-	hasMore bool
-}
-
-func newFeedIterator(client *Posts, ctx context.Context, limit int, sort string) types.FeedIterator {
-	return &feedIterator{
-		client:  client,
-		ctx:     ctx,
-		limit:   limit,
-		sort:    sort,
-		hasMore: true,
+// newFeedIterator создаёт итератор для получения ленты постов.
+func newFeedIterator(client *Posts, ctx context.Context, tab types.FeedTab, limit int) types.FeedIterator {
+	fetch := func(ctx context.Context, token iterator.PageToken) ([]*types.Post, iterator.PageToken, bool, error) {
+		result, err := client.getFeed(ctx, tab, token.Cursor, limit)
+		if err != nil {
+			return nil, iterator.PageToken{}, false, err
+		}
+		next := iterator.PageToken{Cursor: result.Pagination.NextCursor}
+		return result.Posts, next, result.Pagination.HasMore, nil
 	}
+
+	return iterator.New[*types.Post](ctx, fetch, iterator.PageToken{})
 }
 
-func (f *feedIterator) HasMore() bool {
-	return f.hasMore
-}
-
-func (f *feedIterator) Next() ([]types.Post, error) {
-	result, err := f.client.getFeed(f.ctx, f.limit, f.cursor, f.sort)
-	if err != nil {
-		return nil, err
+// newUserPostsIterator создаёт итератор для получения постов пользователя.
+func newUserPostsIterator(client *Posts, ctx context.Context, username string, limit int) types.FeedIterator {
+	fetch := func(ctx context.Context, token iterator.PageToken) ([]*types.Post, iterator.PageToken, bool, error) {
+		result, err := client.getUserPosts(ctx, username, limit, token.Cursor)
+		if err != nil {
+			return nil, iterator.PageToken{}, false, err
+		}
+		next := iterator.PageToken{Cursor: result.Pagination.NextCursor}
+		return result.Posts, next, result.Pagination.HasMore, nil
 	}
-	f.cursor = result.Pagination.NextCursor
-	f.hasMore = result.Pagination.HasMore
 
-	return result.Posts, nil
+	return iterator.New[*types.Post](ctx, fetch, iterator.PageToken{})
 }

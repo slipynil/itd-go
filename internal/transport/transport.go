@@ -9,14 +9,14 @@ import (
 	"net/http"
 )
 
-// httpTransport [Client] - это тупой слой, он знает только как отправить запрос и получить ответ.
-// Он не знает что такое `User`, `Post`, `Feed`.
+// Client предоставляет низкоуровневый HTTP транспорт для выполнения запросов к API.
+// Не содержит бизнес-логики, только отправку запросов и получение ответов.
 type Client struct {
 	baseURL    string
 	httpClient *http.Client
 }
 
-// NewClient создает новый transport клиент с middleware цепочкой
+// NewClient создаёт новый transport клиент с настроенной middleware цепочкой.
 func NewClient(cfg Config) *Client {
 	transport := buildTransport(cfg)
 
@@ -39,7 +39,7 @@ func (c *Client) NewRequest(ctx context.Context, method, path string, body any) 
 	if body != nil {
 		data, err := json.Marshal(body)
 		if err != nil {
-			return nil, fmt.Errorf("ошибка при декодировании тела запроса: %w", err)
+			return nil, fmt.Errorf("ошибка при сериализации тела запроса: %w", err)
 		}
 		bodyReader = bytes.NewReader(data)
 	}
@@ -49,6 +49,9 @@ func (c *Client) NewRequest(ctx context.Context, method, path string, body any) 
 	req, err := http.NewRequestWithContext(ctx, method, url, bodyReader)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка при создании запроса: %w", err)
+	}
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
 	}
 	return req, nil
 }

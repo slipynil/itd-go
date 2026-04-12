@@ -1,20 +1,19 @@
 package transport
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/slipynil/itd-go/internal/auth"
-	"github.com/slipynil/itd-go/internal/errors"
+	"github.com/slipynil/itd-go/internal/pkg/errors"
 )
 
-// authMiddleware добавляет заголовок Authorization к каждому запросу
+// authMiddleware добавляет заголовок Authorization с Bearer токеном к каждому запросу.
 type authMiddleware struct {
-	base     http.RoundTripper // структура с реализацией интерфейса для HTTP клиента
-	provider auth.Provider     // структура с интерфейсом провайдера аутентификации
+	base     http.RoundTripper // базовый транспорт для выполнения запроса
+	provider auth.Provider     // провайдер аутентификации для получения токена
 }
 
-// реализация метода RoundTrip для authMiddleware
+// RoundTrip реализует интерфейс http.RoundTripper для authMiddleware.
 func (m *authMiddleware) RoundTrip(req *http.Request) (*http.Response, error) {
 	// Получаем токен от провайдера
 	token, err := m.provider.GetAccessToken(req.Context())
@@ -29,21 +28,20 @@ func (m *authMiddleware) RoundTrip(req *http.Request) (*http.Response, error) {
 	return m.base.RoundTrip(req)
 }
 
-// statusCheckMiddleware проверяет статус ответа и возвращает ошибку при необходимости
+// statusCheckMiddleware проверяет HTTP статус код ответа и возвращает ошибку при 4xx/5xx.
 type statusCheckMiddleware struct {
 	base http.RoundTripper
 }
 
+// RoundTrip реализует интерфейс http.RoundTripper для statusCheckMiddleware.
 func (m *statusCheckMiddleware) RoundTrip(req *http.Request) (*http.Response, error) {
 	resp, err := m.base.RoundTrip(req)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("Протокол: ", resp.Proto)
 
 	// Проверяем статус ответа
 	if err := errors.CheckResponse(resp); err != nil {
-		resp.Body.Close()
 		return nil, err
 	}
 
