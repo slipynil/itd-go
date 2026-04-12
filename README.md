@@ -6,6 +6,7 @@
 
 Made with ❤️ by [@Slipynil](https://github.com/slipynil)
 
+[![Go Reference](https://img.shields.io/badge/go-reference-00ADD8?style=for-the-badge&logo=go&logoColor=white)](https://pkg.go.dev/github.com/slipynil/itd-go)
 [![Telegram](https://img.shields.io/badge/Telegram-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/slipynil_chan)
 
 </div>
