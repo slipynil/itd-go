@@ -1,32 +1,63 @@
+<div align="center">
+
 # ITD Go SDK
 
-Неофициальный Go SDK для работы с API социальной сети [итд.com](https://итд.com)
+**Неофициальный Go SDK для работы с API социальной сети** [итд.com](https://итд.com)
+
+Made with ❤️ by [@Slipynil](https://github.com/slipynil)
+
+[![Telegram](https://img.shields.io/badge/Telegram-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/slipynil_chan)
+
+</div>
 
 ## Текущие реализованные методы
 
 ### Posts API
 ```go
 // Итераторы для постраничной загрузки
-feed := client.Posts.NewFeed(ctx, 20, "popular")           // Лента постов
-userPosts := client.Posts.NewUserPosts(ctx, "username", 20, "new") // Посты пользователя
+feed := client.Posts.NewFeed(ctx, types.FeedTabPopular, 20)           // Лента постов
+userPosts := client.Posts.NewUserPosts(ctx, "username", 20)            // Посты пользователя
 
 // Работа с постами
-post, err := client.Posts.Get(ctx, postID)                 // Получение поста
-post, err := client.Posts.Create(ctx, "Текст", nil)        // Создание поста
-post, err := client.Posts.Repost(ctx, postID, "Комментарий") // Репост
-err := client.Posts.Delete(ctx, postID)                    // Удаление поста
+post, err := client.Posts.Get(ctx, postID)                             // Получение поста
+post, err := client.Posts.Create(ctx, "Текст")                         // Создание поста
+post, err := client.Posts.Create(ctx, "Текст", attachmentID1, attachmentID2) // С вложениями
+post, err := client.Posts.Repost(ctx, postID, "Комментарий")           // Репост
+err := client.Posts.Delete(ctx, postID)                                // Удаление поста
 
 // Взаимодействие
-result, err := client.Posts.Like(ctx, postID)              // Лайк
-result, err := client.Posts.Unlike(ctx, postID)            // Убрать лайк
-poll, err := client.Posts.Vote(ctx, postID, optionIDs...)  // Голосование в опросе
-view, err := client.Posts.View(ctx, postID)                // Отметить просмотр
+result, err := client.Posts.Like(ctx, postID)                          // Лайк
+result, err := client.Posts.Unlike(ctx, postID)                        // Убрать лайк
+poll, err := client.Posts.Vote(ctx, postID, optionIDs...)              // Голосование в опросе
+view, err := client.Posts.View(ctx, postID)                            // Отметить просмотр
 ```
 
 ### User API
 ```go
-user, err := client.User.Me(ctx)                           // Текущий пользователь
-user, err := client.User.Get(ctx, "username")              // Получение пользователя
+user, err := client.User.Me(ctx)                                       // Текущий пользователь
+user, err := client.User.Get(ctx, "username")                          // Получение пользователя
+err := client.User.Follow(ctx, "username")                             // Подписаться
+err := client.User.Unfollow(ctx, "username")                           // Отписаться
+followers, err := client.User.GetFollowers(ctx, "username", 20)        // Список подписчиков
+following, err := client.User.GetFollowing(ctx, "username", 20)        // Список подписок
+response, err := client.User.UpdateProfile(ctx, &displayName, &username, &bio, &bannerID) // Обновить профиль
+```
+
+### Comments API
+```go
+// Итератор для комментариев
+comments := client.Comments.NewCommentList(ctx, postID, 20)            // Комментарии к посту
+replies, err := client.Comments.ListReplies(ctx, commentID, 20)        // Ответы на комментарий
+
+// Создание
+comment, err := client.Comments.CreateComment(ctx, postID, "Текст", nil) // Создать комментарий
+reply, err := client.Comments.CreateReply(ctx, parentCommentID, replyToUserID, "Текст", nil) // Ответить
+
+// Взаимодействие
+err := client.Comments.Like(ctx, commentID)                            // Лайк
+err := client.Comments.Unlike(ctx, commentID)                          // Убрать лайк
+updated, err := client.Comments.Update(ctx, commentID, "Новый текст") // Обновить
+err := client.Comments.Delete(ctx, commentID)                          // Удалить
 ```
 ## Установка
 
@@ -60,7 +91,7 @@ func main() {
     }
 
     // Создать итератор для ленты постов
-    feed := client.Posts.NewFeed(ctx, 20, "popular")
+    feed := client.Posts.NewFeed(ctx, types.FeedTabPopular, 20)
 
     // Получить первую страницу постов
     for feed.HasMore() {
@@ -98,10 +129,10 @@ type Config struct {
 
 ### Posts
 
-- `NewFeed(ctx, limit, sort)` — итератор для ленты постов (sort: "popular", "new", "following")
-- `NewUserPosts(ctx, username, limit, sort)` — итератор для постов пользователя (sort: "new", "popular")
+- `NewFeed(ctx, tab, limit)` — итератор для ленты постов (tab: types.FeedTabPopular, types.FeedTabClan, types.FeedTabFollowing)
+- `NewUserPosts(ctx, username, limit)` — итератор для постов пользователя
 - `Get(ctx, postID)` — получение поста по ID
-- `Create(ctx, content, attachmentIDs)` — создание поста
+- `Create(ctx, content, attachmentIDs...)` — создание поста (attachmentIDs опциональны)
 - `Delete(ctx, postID)` — удаление поста
 - `Like(ctx, postID)` — лайк на пост
 - `Unlike(ctx, postID)` — убрать лайк
@@ -113,12 +144,24 @@ type Config struct {
 
 - `Me(ctx)` — получение информации о текущем пользователе
 - `Get(ctx, username)` — получение информации о пользователе по username
-
-**Примечание:** User API находится в разработке. Доступны только базовые методы получения информации.
+- `Follow(ctx, username)` — подписаться на пользователя
+- `Unfollow(ctx, username)` — отписаться от пользователя
+- `GetFollowers(ctx, username, limit)` — получить список подписчиков пользователя
+- `GetFollowing(ctx, username, limit)` — получить список подписок пользователя
+- `UpdateProfile(ctx, displayName, username, bio, bannerID)` — обновить профиль (все параметры опциональны, передавайте nil для пропуска)
 
 ### Comments
 
-**Примечание:** Comments API находится в разработке.
+- `NewCommentList(ctx, postID, limit)` — итератор для комментариев к посту
+- `ListReplies(ctx, commentID, limit)` — получить список ответов на комментарий
+- `CreateComment(ctx, postID, content, attachmentIDs)` — создать комментарий к посту
+- `CreateReply(ctx, parentCommentID, replyToUserID, content, attachmentIDs)` — создать ответ на комментарий
+- `Delete(ctx, commentID)` — удалить комментарий
+- `Like(ctx, commentID)` — лайк на комментарий
+- `Unlike(ctx, commentID)` — убрать лайк с комментария
+- `Update(ctx, commentID, content)` — обновить содержимое комментария
+
+**Примечание:** Итератор `NewCommentList` реализует интерфейс `CommentIterator` с методами `HasMore()` и `Next()`.
 
 ### Итераторы
 
@@ -202,7 +245,7 @@ client.Posts.NewFeed(ctx, limit, sort)
 SDK возвращает структурированные ошибки с подробным описанием:
 
 ```go
-feed := client.Posts.NewFeed(ctx, 10, "popular")
+feed := client.Posts.NewFeed(ctx, types.FeedTabPopular, 10)
 posts, err := feed.Next()
 if err != nil {
     // Ошибка содержит информацию о коде, сообщении и HTTP статусе
@@ -213,7 +256,9 @@ if err != nil {
 
 ## Примеры
 
-Примеры использования находятся в директории `examples/posts/`:
+Примеры использования находятся в директории `examples/`:
+
+### Posts (`examples/posts/`)
 
 - `showFeed.go` — получение ленты постов через итератор
 - `showUserPosts.go` — получение постов пользователя через итератор
@@ -224,6 +269,28 @@ if err != nil {
 - `unlike.go` — убрать лайк
 - `repost.go` — репост поста
 - `vote.go` — голосование в опросе
+
+### User (`examples/user/`)
+
+- `meInfo.go` — получение информации о текущем пользователе
+- `userInfo.go` — получение информации о пользователе по username
+- `follow.go` — подписка на пользователя
+- `unfollow.go` — отписка от пользователя
+- `get_followers.go` — получение списка подписчиков
+- `get_following.go` — получение списка подписок
+- `updateProfile.go` — обновление профиля пользователя
+
+### Comments (`examples/comments/`)
+
+- `get_comment_list.go` — получение списка комментариев через итератор
+- `get_one_comment.go` — получение одного комментария
+- `get_reply_list.go` — получение списка ответов на комментарий
+- `create_comment.go` — создание комментария к посту
+- `create_reply.go` — создание ответа на комментарий
+- `update_comment.go` — обновление содержимого комментария
+- `delete_comment.go` — удаление комментария
+- `like_comment.go` — лайк на комментарий
+- `unlike_comment.go` — убрать лайк с комментария
 
 ## Требования
 
