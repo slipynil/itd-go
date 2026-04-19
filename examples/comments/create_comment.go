@@ -27,10 +27,22 @@ func main() {
 		log.Fatal(err)
 	}
 
-	postID := "c36ae616-765f-4119-8380-5fd8080df2d0"
-	comment, err := client.Comments.CreateComment(ctx, postID, "привет", nil)
+	postID := "a7b2512f-7ee7-4d7f-8224-8d25e94bf0ed"
+
+	// Создаём простой текстовый комментарий
+	filePath := "/home/user/Downloads/music/fakemink_night_blooming_Jasmine.mp3"
+	comment, err := client.Comments.CreateComment(ctx, postID, "Fakemink Night, Blooming Jasmine", filePath)
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	pp.Println("Комментарий создан:")
 	pp.Println(comment)
+
+	// Для создания комментария с файлами используйте:
+	// comment, err := client.Comments.CreateComment(ctx, postID, "Комментарий с фото", "/path/to/image.jpg")
+	// if err != nil {
+	//     log.Fatal(err)
+	// }
+	// pp.Println(comment)
 }

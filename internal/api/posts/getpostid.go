@@ -26,7 +26,7 @@ func (p *Posts) getFeed(ctx context.Context, tab types.FeedTab, cursor string, l
 
 	defer resp.Body.Close()
 
-	var result ResponseFeed
+	var result responseFeed
 	if err := json.UnmarshalRead(resp.Body, &result, transport.DataOptions); err != nil {
 		return nil, err
 	}
@@ -50,7 +50,7 @@ func (p *Posts) getUserPosts(ctx context.Context, username string, limit int, cu
 
 	defer resp.Body.Close()
 
-	var result ResponseFeed
+	var result responseFeed
 
 	if err := json.UnmarshalRead(resp.Body, &result, transport.DataOptions); err != nil {
 		return nil, err

@@ -29,21 +29,48 @@ func main() {
 
 	postID := "c36ae616-765f-4119-8380-5fd8080df2d0"
 
-	iter := client.Comments.NewCommentList(ctx, postID, 100)
-	for iter.HasMore() {
-		comments, err := iter.Next()
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		for _, comment := range comments {
-
-			reply, err := client.Comments.CreateReply(ctx, comment.ID, comment.Author.ID, "прив", nil)
-			if err != nil {
-				log.Fatal(err)
-			}
-			pp.Println(reply)
-		}
-
+	// Получаем первую страницу комментариев
+	iter := client.Comments.NewCommentList(ctx, postID, 10)
+	if !iter.HasMore() {
+		log.Fatal("Нет комментариев для ответа")
 	}
+
+	comments, err := iter.Next()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if len(comments) == 0 {
+		log.Fatal("Нет комментариев для ответа")
+	}
+
+	// Отвечаем на первый комментарий
+	firstComment := comments[0]
+
+	// Создаём простой текстовый ответ
+	reply, err := client.Comments.CreateReply(
+		ctx,
+		firstComment.ID,
+		firstComment.Author.ID,
+		"Согласен! 💯",
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	pp.Println("Ответ создан:")
+	pp.Println(reply)
+
+	// Для создания ответа с файлами используйте:
+	// reply, err := client.Comments.CreateReply(
+	//     ctx,
+	//     firstComment.ID,
+	//     firstComment.Author.ID,
+	//     "Вот скриншот",
+	//     "/path/to/screenshot.png",
+	// )
+	// if err != nil {
+	//     log.Fatal(err)
+	// }
+	// pp.Println(reply)
 }

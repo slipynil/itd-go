@@ -143,7 +143,7 @@ type Poll struct {
 	Question string `json:"question"`
 
 	// Options - массив вариантов ответа
-	Options []PollOption `json:"options"`
+	Options []PollOptionResponse `json:"options"`
 
 	// TotalVotes - суммарное количество голосов по всем вариантам
 	TotalVotes int `json:"totalVotes"`
@@ -158,8 +158,8 @@ type Poll struct {
 	MultipleChoice bool `json:"multipleChoice"`
 }
 
-// PollOption представляет один вариант ответа в опросе.
-type PollOption struct {
+// PollOptionResponse представляет один вариант ответа в опросе.
+type PollOptionResponse struct {
 	// ID - уникальный идентификатор варианта ответа
 	ID string `json:"id"`
 
@@ -168,6 +168,24 @@ type PollOption struct {
 
 	// Votes - количество голосов за этот вариант
 	Votes int `json:"votesCount"`
+}
+
+// PollRequest представляет запрос на создание опроса.
+type PollRequest struct {
+	// Question - текст вопроса опроса
+	Question string `json:"question"`
+
+	// Options - массив вариантов ответа
+	Options []PollOptionRequest `json:"options"`
+
+	// MultipleChoice - true, если допускается выбор нескольких вариантов
+	MultipleChoice bool `json:"multipleChoice"`
+}
+
+// PollOptionRequest представляет один вариант ответа в запросе на создание опроса.
+type PollOptionRequest struct {
+	// Text - текст варианта ответа
+	Text string `json:"text"`
 }
 
 // LikesCountResponse представляет ответ API с количеством лайков.

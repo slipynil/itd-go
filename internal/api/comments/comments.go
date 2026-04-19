@@ -20,12 +20,19 @@ func New(t *transport.Client) *Comments {
 	return &Comments{transport: t}
 }
 
+// NewCommentList создаёт итератор для получения комментариев к посту.
+// Параметры:
+//   - ctx: контекст для управления временем жизни запроса
+//   - postID: идентификатор поста
+//   - limit: количество комментариев на страницу (рекомендуется 10-20)
+//
+// Возвращает CommentIterator для постраничной загрузки комментариев.
 func (c *Comments) NewCommentList(ctx context.Context, postID string, limit int) types.CommentIterator {
 	return commentListIterator(c, ctx, postID, limit)
 }
 
 // getCommentList получает сырую json стурктуру с комментариями и информацией о пагинации.
-func (c *Comments) getCommentList(ctx context.Context, postID, cursor string, limit int) (*CommentsResponse, error) {
+func (c *Comments) getCommentList(ctx context.Context, postID, cursor string, limit int) (*commentsResponse, error) {
 	path := fmt.Sprintf("/api/posts/%s/comments?limit=%d&sort=popular", postID, limit)
 
 	req, err := c.transport.NewRequest(ctx, "GET", path, nil)
@@ -39,7 +46,7 @@ func (c *Comments) getCommentList(ctx context.Context, postID, cursor string, li
 	}
 	defer resp.Body.Close()
 
-	var result CommentsResponse
+	var result commentsResponse
 	if err := json.UnmarshalRead(resp.Body, &result, transport.DataOptions); err != nil {
 		return nil, err
 	}
@@ -56,7 +63,7 @@ func (c *Comments) ListReplies(ctx context.Context, commentID string, limit int)
 	return result.Data.Replies, nil
 }
 
-func (c *Comments) getReplyList(ctx context.Context, commentID string, limit int) (*RepliesResponse, error) {
+func (c *Comments) getReplyList(ctx context.Context, commentID string, limit int) (*repliesResponse, error) {
 	path := fmt.Sprintf("/api/comments/%s/replies?limit=%d", commentID, limit)
 
 	req, err := c.transport.NewRequest(ctx, "GET", path, nil)
@@ -70,7 +77,7 @@ func (c *Comments) getReplyList(ctx context.Context, commentID string, limit int
 	}
 	defer resp.Body.Close()
 
-	var result RepliesResponse
+	var result repliesResponse
 
 	if err := json.UnmarshalRead(resp.Body, &result); err != nil {
 		return nil, err
@@ -79,19 +86,31 @@ func (c *Comments) getReplyList(ctx context.Context, commentID string, limit int
 	return &result, nil
 }
 
-// Create создаёт новый комментарий к посту.
-func (c *Comments) CreateComment(ctx context.Context, postID string, content string, attachmentIDs []string) (*types.CreateComment, error) {
+// CreateComment создаёт новый комментарий к посту.
+// Параметры:
+//   - ctx: контекст для управления временем жизни запроса
+//   - postID: идентификатор поста
+//   - content: текстовое содержимое комментария
+//   - filePaths: пути к файлам для загрузки и прикрепления к комментарию
+//
+// Возвращает созданный комментарий или ошибку при проблемах с сетью/API.
+func (c *Comments) CreateComment(ctx context.Context, postID string, content string, filePaths ...string) (*types.CreateComment, error) {
+
+	attachmentIDs := make([]string, 0, len(filePaths))
+	for _, path := range filePaths {
+		attachment, err := c.transport.Upload(ctx, path)
+		if err != nil {
+			return nil, err
+		}
+		attachmentIDs = append(attachmentIDs, attachment.ID)
+	}
+
+	payload := createCommentRequest{
+		Content:       content,
+		AttachmentIDs: attachmentIDs,
+	}
+
 	path := fmt.Sprintf("/api/posts/%s/comments", postID)
-
-	if attachmentIDs == nil {
-		attachmentIDs = []string{}
-	}
-
-	payload := map[string]interface{}{
-		"content":       content,
-		"attachmentIds": attachmentIDs,
-	}
-
 	req, err := c.transport.NewRequest(ctx, "POST", path, payload)
 	if err != nil {
 		return nil, err
@@ -111,26 +130,39 @@ func (c *Comments) CreateComment(ctx context.Context, postID string, content str
 	return &result, nil
 }
 
-// Reply создаёт ответ на комментарий.
+// CreateReply создаёт ответ на комментарий.
+// Параметры:
+//   - ctx: контекст для управления временем жизни запроса
+//   - parentCommentID: идентификатор родительского комментария
+//   - replyToUserID: идентификатор пользователя, которому адресован ответ
+//   - content: текстовое содержимое ответа
+//   - filePaths: пути к файлам для загрузки и прикрепления к ответу
+//
+// Возвращает созданный ответ или ошибку при проблемах с сетью/API.
 func (c *Comments) CreateReply(
 	ctx context.Context,
 	parentCommentID,
 	replyToUserID,
 	content string,
-	attachmentIDs []string,
+	filePaths ...string,
 ) (*types.CreateComment, error) {
+
+	attachmentIDs := make([]string, 0, len(filePaths))
+	for _, path := range filePaths {
+		attachment, err := c.transport.Upload(ctx, path)
+		if err != nil {
+			return nil, err
+		}
+		attachmentIDs = append(attachmentIDs, attachment.ID)
+	}
+
+	payload := createReplyRequest{
+		ReplyToUserId: replyToUserID,
+		Content:       content,
+		AttachmentIDs: attachmentIDs,
+	}
+
 	path := fmt.Sprintf("/api/comments/%s/replies", parentCommentID)
-
-	if attachmentIDs == nil {
-		attachmentIDs = []string{}
-	}
-
-	payload := map[string]interface{}{
-		"replyToUserId": replyToUserID,
-		"content":       content,
-		"attachmentIds": attachmentIDs,
-	}
-
 	req, err := c.transport.NewRequest(ctx, "POST", path, payload)
 	if err != nil {
 		return nil, err
@@ -208,8 +240,8 @@ func (c *Comments) Unlike(ctx context.Context, commentID string) error {
 func (c *Comments) Update(ctx context.Context, commentID string, content string) (*types.CommentUpdate, error) {
 	path := fmt.Sprintf("/api/comments/%s", commentID)
 
-	payload := map[string]interface{}{
-		"content": content,
+	payload := updateCommentRequest{
+		Content: content,
 	}
 
 	req, err := c.transport.NewRequest(ctx, "PATCH", path, payload)

@@ -4,7 +4,7 @@
 
 **itd-go** — неофициальный Go SDK для работы с API социальной сети [итд.com](https://итд.com).
 
-Версия: 0.1  
+Версия: 0.2.0  
 Язык: Go 1.26+
 
 ## Архитектура
@@ -27,6 +27,7 @@
 │  Transport (internal/transport/)    │
 │  - HTTP клиент, middleware          │
 │  - Сериализация/десериализация      │
+│  - Загрузка файлов (files.go)       │
 └──────────────┬──────────────────────┘
                │
 ┌──────────────▼──────────────────────┐
@@ -65,7 +66,28 @@ SDK использует refresh token из cookies браузера:
 3. Access token добавляется к каждому запросу через middleware
 4. При истечении токена происходит автоматическое обновление
 
-### 3. Типы и интерфейсы
+### 3. Автоматическая загрузка файлов
+
+SDK автоматически загружает файлы на сервер при создании постов и комментариев:
+
+1. Методы принимают пути к файлам (`filePaths ...string`)
+2. SDK загружает каждый файл через `transport.Upload(ctx, path)`
+3. Получает ID загруженных файлов
+4. Автоматически прикрепляет их к посту/комментарию
+
+```go
+// Пользователь просто передаёт пути к файлам
+post, err := client.Posts.Create(ctx, "Контент", "/path/to/image.jpg")
+
+// SDK автоматически:
+// 1. Загружает файл через transport.Upload()
+// 2. Получает attachment ID
+// 3. Создаёт пост с этим ID
+```
+
+**Важно:** Методы `Create`, `CreateWithPoll`, `CreateComment`, `CreateReply` принимают `filePaths ...string`, а не `attachmentIDs`.
+
+### 4. Типы и интерфейсы
 
 - **types/** — публичные типы и интерфейсы API
 - **internal/dto/** — внутренние DTO для парсинга ответов API
@@ -195,6 +217,65 @@ func main() {
 }
 ```
 
+## Как добавить метод с загрузкой файлов
+
+Если метод должен поддерживать загрузку файлов:
+
+### 1. Определить интерфейс с filePaths
+
+```go
+type PostsAPI interface {
+    // CreateSomething создаёт что-то с файлами.
+    // Параметры:
+    //   - ctx: контекст
+    //   - content: текстовое содержимое
+    //   - filePaths: пути к файлам для автоматической загрузки
+    // Возвращает результат или ошибку.
+    CreateSomething(ctx context.Context, content string, filePaths ...string) (*Result, error)
+}
+```
+
+### 2. Реализовать с автозагрузкой
+
+```go
+func (p *Posts) CreateSomething(ctx context.Context, content string, filePaths ...string) (*types.Result, error) {
+    // Загружаем файлы и получаем их ID
+    attachmentIDs := make([]string, 0, len(filePaths))
+    for _, path := range filePaths {
+        attachment, err := p.transport.Upload(ctx, path)
+        if err != nil {
+            return nil, err
+        }
+        attachmentIDs = append(attachmentIDs, attachment.ID)
+    }
+    
+    // Создаём payload с ID загруженных файлов
+    payload := createRequest{
+        Content:       content,
+        AttachmentIDs: attachmentIDs,
+    }
+    
+    // Отправляем запрос
+    req, err := p.transport.NewRequest(ctx, "POST", "/api/something", payload)
+    if err != nil {
+        return nil, err
+    }
+    
+    resp, err := p.transport.Do(req)
+    if err != nil {
+        return nil, err
+    }
+    defer resp.Body.Close()
+    
+    var result types.Result
+    if err := json.UnmarshalRead(resp.Body, &result); err != nil {
+        return nil, err
+    }
+    
+    return &result, nil
+}
+```
+
 ## Как создать новый итератор
 
 ### 1. Определить тип в types/interfaces.go
@@ -248,6 +329,8 @@ itd-go/
 │   │   └── user/         # API пользователей
 │   ├── auth/             # Аутентификация
 │   ├── transport/        # HTTP транспорт
+│   │   ├── transport.go  # HTTP клиент и middleware
+│   │   └── files.go      # Загрузка файлов на сервер
 │   ├── root/             # Корневой клиент
 │   ├── dto/              # Общие DTO
 │   └── pkg/              # Утилиты
@@ -267,6 +350,7 @@ itd-go/
 - **client.go** — точка входа в SDK
 - **internal/pkg/iterator/iterator.go** — базовая реализация итератора
 - **internal/transport/transport.go** — HTTP клиент
+- **internal/transport/files.go** — загрузка файлов на сервер
 - **internal/auth/auth.go** — управление токенами
 
 ## Тестирование

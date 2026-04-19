@@ -2,14 +2,21 @@ package posts
 
 import "github.com/slipynil/itd-go/types"
 
+// createPostRequest представляет запрос на создание поста.
+type createPostRequest struct {
+	Content       string             `json:"content,omitempty"`
+	AttachmentIDs []string           `json:"attachmentIds,omitempty"`
+	Poll          *types.PollRequest `json:"poll,omitempty"`
+}
+
 // ResponseFeed представляет ответ API при получении ленты постов.
-type ResponseFeed struct {
+type responseFeed struct {
 	// Data - данные ленты с постами и информацией о пагинации
 	Data FeedData `json:"data"`
 }
 
 // ResponsePost представляет ответ API при получении одного поста.
-type ResponsePost struct {
+type responsePost struct {
 	// Data - данные поста
 	Data types.Post `json:"data"`
 }

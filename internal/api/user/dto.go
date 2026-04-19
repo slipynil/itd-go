@@ -2,6 +2,13 @@ package user
 
 import "github.com/slipynil/itd-go/types"
 
+type UpdateProfile struct {
+	DisplayName string `json:"displayName,omitempty"`
+	Username    string `json:"username,omitempty"`
+	Bio         string `json:"bio,omitempty"`
+	BannerID    string `json:"bannerId,omitempty"`
+}
+
 // ResponseUsers представляет ответ API при получении списка пользователей.
 type ResponseUsers struct {
 	// Data - данные со списком пользователей и информацией о пагинации
