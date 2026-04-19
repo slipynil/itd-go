@@ -12,7 +12,7 @@ type Comment struct {
 	Content string `json:"content"`
 
 	// Author - информация об авторе комментария
-	Author PostAuthor `json:"author"`
+	Author AuthorInfo `json:"author"`
 
 	// LikesCount - количество лайков на комментарии
 	LikesCount int `json:"likesCount"`
@@ -46,31 +46,6 @@ type CommentUpdate struct {
 
 	// UpdatedAt - время обновления комментария
 	UpdatedAt time.Time `json:"editedAt"`
-}
-
-// Author представляет краткую информацию об авторе комментария.
-// Содержит базовые данные профиля пользователя.
-type Author struct {
-	// ID - уникальный идентификатор пользователя
-	ID string `json:"id"`
-
-	// Username - уникальный логин пользователя
-	Username string `json:"username"`
-
-	// DisplayName - отображаемое имя пользователя
-	DisplayName string `json:"displayName"`
-
-	// Avatar - аватар пользователя: эмодзи или URL изображения
-	Avatar string `json:"avatar"`
-
-	// Verified - true, если аккаунт верифицирован
-	Verified bool `json:"verified"`
-
-	// Pin - специальный значок пользователя (nil, если не установлен)
-	Pin *Pin `json:"pin,omitempty"`
-
-	// HasNuksta - true, если пользователь имеет премиум подписку
-	HasNuksta bool `json:"hasNuksta"`
 }
 
 // CommentAttachment представляет файл, прикреплённый к комментарию.
@@ -130,7 +105,7 @@ type CreateComment struct {
 	Content string `json:"content"`
 
 	// Author - информация об авторе комментария
-	Author PostAuthor `json:"author"`
+	Author AuthorInfo `json:"author"`
 
 	// CreatedAt - время создания комментария
 	CreatedAt time.Time `json:"createdAt"`

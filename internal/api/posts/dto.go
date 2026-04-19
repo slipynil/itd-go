@@ -9,6 +9,16 @@ type createPostRequest struct {
 	Poll          *types.PollRequest `json:"poll,omitempty"`
 }
 
+// repostRequest представляет запрос на создание репоста.
+type repostRequest struct {
+	Content string `json:"content,omitempty"`
+}
+
+// voteRequest представляет запрос на голосование в опросе.
+type voteRequest struct {
+	OptionIds []string `json:"optionIds,omitempty"`
+}
+
 // ResponseFeed представляет ответ API при получении ленты постов.
 type responseFeed struct {
 	// Data - данные ленты с постами и информацией о пагинации

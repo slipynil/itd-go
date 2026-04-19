@@ -3,6 +3,7 @@ package posts
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/go-json-experiment/json"
 
@@ -58,15 +59,13 @@ func (p *Posts) Get(ctx context.Context, postID string) (*types.Post, error) {
 
 // Create создаёт новый пост.
 func (p *Posts) Create(ctx context.Context, content string, filePaths ...string) (*types.Post, error) {
+	if strings.TrimSpace(content) == "" && len(filePaths) == 0 {
+		return nil, fmt.Errorf("content or files required")
+	}
 
-	attachmentIDs := make([]string, 0, len(filePaths))
-
-	for _, path := range filePaths {
-		attachment, err := p.transport.Upload(ctx, path)
-		if err != nil {
-			return nil, err
-		}
-		attachmentIDs = append(attachmentIDs, attachment.ID)
+	attachmentIDs, err := p.transport.UploadFiles(ctx, filePaths...)
+	if err != nil {
+		return nil, err
 	}
 
 	payload := createPostRequest{
@@ -104,15 +103,16 @@ func (p *Posts) Create(ctx context.Context, content string, filePaths ...string)
 //
 // Возвращает созданный пост с опросом или ошибку при проблемах с сетью/API.
 func (p *Posts) CreateWithPoll(ctx context.Context, content string, poll *types.PollRequest, filePaths ...string) (*types.Post, error) {
+	if poll == nil {
+		return nil, fmt.Errorf("poll cannot be nil")
+	}
+	if len(poll.Options) < 2 {
+		return nil, fmt.Errorf("poll must have at least 2 options")
+	}
 
-	attachmentIDs := make([]string, 0, len(filePaths))
-
-	for _, path := range filePaths {
-		attachment, err := p.transport.Upload(ctx, path)
-		if err != nil {
-			return nil, err
-		}
-		attachmentIDs = append(attachmentIDs, attachment.ID)
+	attachmentIDs, err := p.transport.UploadFiles(ctx, filePaths...)
+	if err != nil {
+		return nil, err
 	}
 
 	payload := createPostRequest{
@@ -211,11 +211,8 @@ func (p *Posts) Unlike(ctx context.Context, postID string) (*types.LikesCountRes
 func (p *Posts) Repost(ctx context.Context, postID string, content string) (*types.Post, error) {
 	path := fmt.Sprintf("/api/posts/%s/repost", postID)
 
-	var payload map[string]interface{}
-	if len(content) != 0 {
-		payload = map[string]interface{}{
-			"content": content,
-		}
+	payload := repostRequest{
+		Content: content,
 	}
 
 	req, err := p.transport.NewRequest(ctx, "POST", path, payload)
@@ -243,9 +240,8 @@ func (p *Posts) Repost(ctx context.Context, postID string, content string) (*typ
 func (p *Posts) Vote(ctx context.Context, postID string, optionIDs ...string) (*types.Poll, error) {
 	path := fmt.Sprintf("/api/posts/%s/poll/vote", postID)
 
-	payload := map[string]interface{}{}
-	if len(optionIDs) > 0 {
-		payload["optionIds"] = optionIDs
+	payload := voteRequest{
+		OptionIds: optionIDs,
 	}
 
 	req, err := p.transport.NewRequest(ctx, "POST", path, payload)

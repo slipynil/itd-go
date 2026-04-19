@@ -42,6 +42,7 @@ func (c *Client) Do(req *http.Request) (*http.Response, error) {
 //   - path: путь к API endpoint
 //   - body: буфер с multipart данными
 //   - contentType: Content-Type заголовок (обычно из writer.FormDataContentType())
+//
 // Возвращает готовый HTTP-запрос или ошибку.
 func (c *Client) NewRequestMultipart(
 	ctx context.Context,
@@ -102,26 +103,4 @@ func buildTransport(cfg Config) http.RoundTripper {
 	}
 
 	return transport
-}
-
-// обработка ответов
-func (c *Client) DoJSON(ctx context.Context, req *http.Request, result any) error {
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := c.httpClient.Do(req.WithContext(ctx))
-	if err != nil {
-		return fmt.Errorf("ошибка при выполнении запроса: %w", err)
-	}
-	defer resp.Body.Close()
-
-	// Проверка статуса теперь выполняется в statusCheckMiddleware
-
-	if result == nil {
-		return nil
-	}
-
-	if err := json.NewDecoder(resp.Body).Decode(result); err != nil {
-		return fmt.Errorf("ошибка при декодировании ответа: %w", err)
-	}
-	return nil
 }

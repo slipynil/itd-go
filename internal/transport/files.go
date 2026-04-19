@@ -52,3 +52,25 @@ func (c *Client) Upload(ctx context.Context, path string) (*types.Attachment, er
 	var result types.Attachment
 	return &result, json.UnmarshalRead(resp.Body, &result)
 }
+
+// UploadFiles загружает несколько файлов и возвращает их ID.
+// Параметры:
+//   - ctx: контекст для управления временем жизни запроса
+//   - filePaths: пути к файлам для загрузки
+//
+// Возвращает срез ID загруженных файлов или ошибку при проблемах с загрузкой.
+func (c *Client) UploadFiles(ctx context.Context, filePaths ...string) ([]string, error) {
+	if len(filePaths) == 0 {
+		return nil, nil
+	}
+
+	attachmentIDs := make([]string, 0, len(filePaths))
+	for _, path := range filePaths {
+		attachment, err := c.Upload(ctx, path)
+		if err != nil {
+			return nil, err
+		}
+		attachmentIDs = append(attachmentIDs, attachment.ID)
+	}
+	return attachmentIDs, nil
+}

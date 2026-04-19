@@ -45,7 +45,7 @@ type Post struct {
 	CreatedAt time.Time `json:"createdAt"`
 
 	// Author - информация об авторе поста
-	Author PostAuthor `json:"author"`
+	Author AuthorInfo `json:"author"`
 
 	// Attachments - массив вложений (изображения, видео, файлы)
 	Attachments []Attachment `json:"attachments"`
@@ -81,31 +81,6 @@ type Span struct {
 	// Эти поля специфичны для разных типов Span
 	Username string `json:"username,omitempty"`
 	Tag      string `json:"tag,omitempty"`
-}
-
-// PostAuthor представляет краткую информацию об авторе поста.
-// Содержит базовые данные профиля пользователя.
-type PostAuthor struct {
-	// ID - уникальный идентификатор пользователя
-	ID string `json:"id"`
-
-	// Username - уникальный логин пользователя
-	Username string `json:"username"`
-
-	// DisplayName - отображаемое имя пользователя
-	DisplayName string `json:"displayName"`
-
-	// Avatar - аватар пользователя: эмодзи или URL изображения
-	Avatar string `json:"avatar"`
-
-	// Pin - специальный значок пользователя за какие-то заслуги
-	Pin *Pin `json:"pin"`
-
-	// IsVerified - true, если аккаунт верифицирован
-	IsVerified bool `json:"verified"`
-
-	// HasNuksta - true, если пользователь имеет премиум подписку
-	HasNuksta bool `json:"hasNuksta"`
 }
 
 // Attachment представляет файл, прикреплённый к посту.
