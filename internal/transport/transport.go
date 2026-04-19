@@ -34,6 +34,31 @@ func (c *Client) Do(req *http.Request) (*http.Response, error) {
 	return c.httpClient.Do(req)
 }
 
+// NewRequestMultipart создаёт HTTP-запрос с multipart/form-data телом.
+// Используется для загрузки файлов на сервер.
+// Параметры:
+//   - ctx: контекст для управления временем жизни запроса
+//   - method: HTTP метод (обычно POST)
+//   - path: путь к API endpoint
+//   - body: буфер с multipart данными
+//   - contentType: Content-Type заголовок (обычно из writer.FormDataContentType())
+// Возвращает готовый HTTP-запрос или ошибку.
+func (c *Client) NewRequestMultipart(
+	ctx context.Context,
+	method,
+	path string,
+	body *bytes.Buffer,
+	contentType string,
+) (*http.Request, error) {
+	url := c.baseURL + path
+	req, err := http.NewRequestWithContext(ctx, method, url, body)
+	if err != nil {
+		return nil, fmt.Errorf("ошибка при создании запроса: %w", err)
+	}
+	req.Header.Set("Content-Type", contentType)
+	return req, nil
+}
+
 func (c *Client) NewRequest(ctx context.Context, method, path string, body any) (*http.Request, error) {
 	var bodyReader io.Reader
 	if body != nil {

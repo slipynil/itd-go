@@ -33,9 +33,18 @@ type PostsAPI interface {
 	// Параметры:
 	//   - ctx: контекст для управления временем жизни запроса
 	//   - content: текстовое содержимое поста
-	//   - attachmentIDs: массив ID вложений (изображения, файлы)
+	//   - filePaths: пути к файлам для загрузки и прикрепления к посту
 	// Возвращает созданный пост или ошибку при проблемах с сетью/API.
-	Create(ctx context.Context, content string, attachmentIDs ...string) (*Post, error)
+	Create(ctx context.Context, content string, filePaths ...string) (*Post, error)
+
+	// CreateWithPoll создаёт новый пост с опросом.
+	// Параметры:
+	//   - ctx: контекст для управления временем жизни запроса
+	//   - content: текстовое содержимое поста
+	//   - poll: структура опроса с вопросом и вариантами ответов
+	//   - filePaths: пути к файлам для загрузки и прикрепления к посту
+	// Возвращает созданный пост или ошибку при проблемах с сетью/API.
+	CreateWithPoll(ctx context.Context, content string, poll *PollRequest, filePaths ...string) (*Post, error)
 
 	// Delete удаляет пост по его ID.
 	// Параметры:
@@ -121,7 +130,6 @@ type UserAPI interface {
 	//
 	// Примечание: в настоящее время API возвращает не более 20 подписчиков
 	// независимо от переданного limit.
-	// Возвращает срез UserCompact с данными подписчиков. UserCompact с данными подписок.
 	GetFollowers(ctx context.Context, username string, limit int) ([]UserCompact, error)
 
 	// GetFollowing возвращает список подписок пользователя.
@@ -130,22 +138,18 @@ type UserAPI interface {
 	//   - username: идентификатор пользователя или юзернейм пользователя
 	//   - limit: максимальное количество подписок в ответе
 	//
-	// Возвращает срез
+	// Возвращает срез UserCompact с данными подписок.
 	//
-	// Примечание: в настоящее время API возвращает не более 20 подписчиков
+	// Примечание: в настоящее время API возвращает не более 20 подписок
 	// независимо от переданного limit.
-	// Возвращает срез UserCompact с данными подписчиков. UserCompact с данными подписок.
 	GetFollowing(ctx context.Context, username string, limit int) ([]UserCompact, error)
 
 	// UpdateProfile обновляет профиль текущего пользователя.
 	// Параметры:
 	//   - ctx: контекст для управления временем жизни запроса
-	//   - displayName: новое отображаемое имя (nil = не изменять)
-	//   - username: новое имя пользователя (nil = не изменять)
-	//   - bio: новая биография (nil = не изменять)
-	//   - bannerID: ID нового баннера (nil = не изменять)
+	//   - config: структура с полями для обновления (пустые поля не изменяются)
 	// Возвращает обновлённую информацию о пользователе или ошибку при проблемах с сетью/API.
-	UpdateProfile(ctx context.Context, displayName *string, username *string, bio *string, bannerID *string) (*UpdateProfileResponse, error)
+	UpdateProfile(ctx context.Context, config UpdateProfile) (*UpdateProfileResponse, error)
 }
 
 // CommentsAPI предоставляет методы для работы с комментариями в ITD.
@@ -172,18 +176,19 @@ type CommentsAPI interface {
 	//   - ctx: контекст для управления временем жизни запроса
 	//   - postID: идентификатор поста
 	//   - content: текстовое содержимое комментария
-	//   - attachmentIDs: массив ID вложений (может быть nil)
+	//   - filePaths: пути к файлам для загрузки и прикрепления к комментарию
 	// Возвращает созданный комментарий или ошибку при проблемах с сетью/API.
-	CreateComment(ctx context.Context, postID string, content string, attachmentIDs []string) (*CreateComment, error)
+	CreateComment(ctx context.Context, postID string, content string, filePaths ...string) (*CreateComment, error)
 
 	// CreateReply создаёт ответ на комментарий.
 	// Параметры:
 	//   - ctx: контекст для управления временем жизни запроса
-	//   - commentID: идентификатор комментария для ответа
+	//   - parentCommentID: идентификатор родительского комментария
+	//   - replyToUserID: идентификатор пользователя, которому адресован ответ
 	//   - content: текстовое содержимое ответа
-	//   - attachmentIDs: массив ID вложений (может быть nil)
+	//   - filePaths: пути к файлам для загрузки и прикрепления к ответу
 	// Возвращает созданный ответ или ошибку при проблемах с сетью/API.
-	CreateReply(ctx context.Context, parentCommentID, replyToUserID, content string, attachmentIDs []string) (*CreateComment, error)
+	CreateReply(ctx context.Context, parentCommentID, replyToUserID, content string, filePaths ...string) (*CreateComment, error)
 
 	// Delete удаляет комментарий по его ID.
 	// Параметры:

@@ -8,6 +8,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/k0kubun/pp"
 	itdgo "github.com/slipynil/itd-go"
+	"github.com/slipynil/itd-go/types"
 )
 
 func main() {
@@ -26,10 +27,17 @@ func main() {
 		log.Fatal(err)
 	}
 
-	bio := "привет"
-	user, err := client.User.UpdateProfile(ctx, nil, nil, &bio, nil)
+	// Обновляем профиль с автоматической загрузкой баннера
+	profile := types.UpdateProfile{
+		Bio:        "Новая биография",
+		BannerPath: "/home/user/Pictures/fakemink-ig.png",
+	}
+
+	user, err := client.User.UpdateProfile(ctx, profile)
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	pp.Println("Профиль обновлён:")
 	pp.Println(user)
 }

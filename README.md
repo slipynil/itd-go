@@ -5,6 +5,8 @@
 
 **Неофициальный Go SDK для работы с API социальной сети** [итд.com](https://итд.com)
 
+**Версия:** 0.2.0
+
 Made with ❤️ by [@Slipynil](https://github.com/slipynil)
 
 [![Go Reference](https://img.shields.io/badge/go-reference-00ADD8?style=for-the-badge&logo=go&logoColor=white)](https://pkg.go.dev/github.com/slipynil/itd-go)
@@ -23,7 +25,9 @@ userPosts := client.Posts.NewUserPosts(ctx, "username", 20)            // Пос
 // Работа с постами
 post, err := client.Posts.Get(ctx, postID)                             // Получение поста
 post, err := client.Posts.Create(ctx, "Текст")                         // Создание поста
-post, err := client.Posts.Create(ctx, "Текст", attachmentID1, attachmentID2) // С вложениями
+post, err := client.Posts.Create(ctx, "Текст", "/path/to/image.jpg")  // С автозагрузкой файлов
+post, err := client.Posts.CreateWithPoll(ctx, "Текст", &poll)           // Создание поста с опросом
+post, err := client.Posts.CreateWithPoll(ctx, "Текст", &poll, "/path/to/file.jpg") // С опросом и файлами
 post, err := client.Posts.Repost(ctx, postID, "Комментарий")           // Репост
 err := client.Posts.Delete(ctx, postID)                                // Удаление поста
 
@@ -42,7 +46,14 @@ err := client.User.Follow(ctx, "username")                             // Под
 err := client.User.Unfollow(ctx, "username")                           // Отписаться
 followers, err := client.User.GetFollowers(ctx, "username", 20)        // Список подписчиков
 following, err := client.User.GetFollowing(ctx, "username", 20)        // Список подписок
-response, err := client.User.UpdateProfile(ctx, &displayName, &username, &bio, &bannerID) // Обновить профиль
+
+// Обновление профиля с автозагрузкой баннера
+profile := types.UpdateProfile{
+    DisplayName: "Новое имя",
+    Bio:         "Новая биография",
+    BannerPath:  "/path/to/banner.jpg", // Автоматически загрузится
+}
+response, err := client.User.UpdateProfile(ctx, profile)
 ```
 
 ### Comments API
@@ -52,8 +63,10 @@ comments := client.Comments.NewCommentList(ctx, postID, 20)            // Ком
 replies, err := client.Comments.ListReplies(ctx, commentID, 20)        // Ответы на комментарий
 
 // Создание
-comment, err := client.Comments.CreateComment(ctx, postID, "Текст", nil) // Создать комментарий
-reply, err := client.Comments.CreateReply(ctx, parentCommentID, replyToUserID, "Текст", nil) // Ответить
+comment, err := client.Comments.CreateComment(ctx, postID, "Текст")    // Создать комментарий
+comment, err := client.Comments.CreateComment(ctx, postID, "Текст", "/path/to/file.jpg") // С файлом
+reply, err := client.Comments.CreateReply(ctx, parentCommentID, replyToUserID, "Текст") // Ответить
+reply, err := client.Comments.CreateReply(ctx, parentCommentID, replyToUserID, "Текст", "/path/to/file.jpg") // С файлом
 
 // Взаимодействие
 err := client.Comments.Like(ctx, commentID)                            // Лайк
@@ -134,7 +147,8 @@ type Config struct {
 - `NewFeed(ctx, tab, limit)` — итератор для ленты постов (tab: types.FeedTabPopular, types.FeedTabClan, types.FeedTabFollowing)
 - `NewUserPosts(ctx, username, limit)` — итератор для постов пользователя
 - `Get(ctx, postID)` — получение поста по ID
-- `Create(ctx, content, attachmentIDs...)` — создание поста (attachmentIDs опциональны)
+- `Create(ctx, content, filePaths...)` — создание поста с автоматической загрузкой файлов (filePaths опциональны)
+- `CreateWithPoll(ctx, content, *poll, filePaths...)` — создание поста с опросом и файлами (poll - указатель на PollRequest, filePaths опциональны)
 - `Delete(ctx, postID)` — удаление поста
 - `Like(ctx, postID)` — лайк на пост
 - `Unlike(ctx, postID)` — убрать лайк
@@ -150,14 +164,14 @@ type Config struct {
 - `Unfollow(ctx, username)` — отписаться от пользователя
 - `GetFollowers(ctx, username, limit)` — получить список подписчиков пользователя
 - `GetFollowing(ctx, username, limit)` — получить список подписок пользователя
-- `UpdateProfile(ctx, displayName, username, bio, bannerID)` — обновить профиль (все параметры опциональны, передавайте nil для пропуска)
+- `UpdateProfile(ctx, config)` — обновить профиль (config - структура UpdateProfile с полями для обновления, пустые поля не изменяются, BannerPath автоматически загружается)
 
 ### Comments
 
 - `NewCommentList(ctx, postID, limit)` — итератор для комментариев к посту
 - `ListReplies(ctx, commentID, limit)` — получить список ответов на комментарий
-- `CreateComment(ctx, postID, content, attachmentIDs)` — создать комментарий к посту
-- `CreateReply(ctx, parentCommentID, replyToUserID, content, attachmentIDs)` — создать ответ на комментарий
+- `CreateComment(ctx, postID, content, filePaths...)` — создать комментарий с автоматической загрузкой файлов (filePaths опциональны)
+- `CreateReply(ctx, parentCommentID, replyToUserID, content, filePaths...)` — создать ответ с автоматической загрузкой файлов (filePaths опциональны)
 - `Delete(ctx, commentID)` — удалить комментарий
 - `Like(ctx, commentID)` — лайк на комментарий
 - `Unlike(ctx, commentID)` — убрать лайк с комментария
@@ -266,6 +280,8 @@ if err != nil {
 - `showUserPosts.go` — получение постов пользователя через итератор
 - `getPost.go` — получение поста по ID
 - `createPost.go` — создание нового поста
+- `createPostWithFiles.go` — создание поста с автоматической загрузкой файлов
+- `createPostWithPoll.go` — создание поста с опросом
 - `deletePost.go` — удаление поста
 - `like.go` — лайк на пост
 - `unlike.go` — убрать лайк

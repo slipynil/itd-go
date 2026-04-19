@@ -57,13 +57,21 @@ func (p *Posts) Get(ctx context.Context, postID string) (*types.Post, error) {
 }
 
 // Create создаёт новый пост.
-func (p *Posts) Create(ctx context.Context, content string, attachmentIDs ...string) (*types.Post, error) {
+func (p *Posts) Create(ctx context.Context, content string, filePaths ...string) (*types.Post, error) {
 
-	payload := map[string]interface{}{
-		"content": content,
+	attachmentIDs := make([]string, 0, len(filePaths))
+
+	for _, path := range filePaths {
+		attachment, err := p.transport.Upload(ctx, path)
+		if err != nil {
+			return nil, err
+		}
+		attachmentIDs = append(attachmentIDs, attachment.ID)
 	}
-	if len(attachmentIDs) > 0 {
-		payload["attachmentIds"] = attachmentIDs
+
+	payload := createPostRequest{
+		Content:       content,
+		AttachmentIDs: attachmentIDs,
 	}
 
 	req, err := p.transport.NewRequest(ctx, "POST", "/api/posts", payload)
@@ -87,7 +95,52 @@ func (p *Posts) Create(ctx context.Context, content string, attachmentIDs ...str
 	return &result, nil
 }
 
-// --- NOT CHECKED ---
+// CreateWithPoll создаёт новый пост с опросом.
+// Параметры:
+//   - ctx: контекст для управления временем жизни запроса
+//   - content: текстовое содержимое поста
+//   - poll: структура опроса с вопросом и вариантами ответов
+//   - filePaths: пути к файлам для загрузки и прикрепления к посту
+//
+// Возвращает созданный пост с опросом или ошибку при проблемах с сетью/API.
+func (p *Posts) CreateWithPoll(ctx context.Context, content string, poll *types.PollRequest, filePaths ...string) (*types.Post, error) {
+
+	attachmentIDs := make([]string, 0, len(filePaths))
+
+	for _, path := range filePaths {
+		attachment, err := p.transport.Upload(ctx, path)
+		if err != nil {
+			return nil, err
+		}
+		attachmentIDs = append(attachmentIDs, attachment.ID)
+	}
+
+	payload := createPostRequest{
+		Content:       content,
+		AttachmentIDs: attachmentIDs,
+		Poll:          poll,
+	}
+
+	req, err := p.transport.NewRequest(ctx, "POST", "/api/posts", payload)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := p.transport.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var result types.Post
+
+	err = json.UnmarshalRead(resp.Body, &result, transport.DataOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
 
 // Delete удаляет пост по его ID.
 func (p *Posts) Delete(ctx context.Context, postID string) error {
@@ -220,7 +273,7 @@ func (p *Posts) Vote(ctx context.Context, postID string, optionIDs ...string) (*
 
 // View отмечает пост как просмотренный.
 func (p *Posts) View(ctx context.Context, postID string) (*types.PostViewResponse, error) {
-	path := fmt.Sprintf("api/posts/%s/view", postID)
+	path := fmt.Sprintf("/api/posts/%s/view", postID)
 
 	req, err := p.transport.NewRequest(ctx, "POST", path, nil)
 	if err != nil {

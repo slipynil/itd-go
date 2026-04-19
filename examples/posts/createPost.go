@@ -29,7 +29,10 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	content := "лол"
+
+	// Создаём простой текстовый пост
+	content := "Привет, ITD! 👋"
+
 	post, err := client.Posts.Create(ctx, content)
 	if err != nil {
 		log.Fatal(err)

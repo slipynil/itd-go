@@ -100,21 +100,20 @@ func (u *User) Unfollow(ctx context.Context, username string) error {
 }
 
 // UpdateProfile обновляет профиль текущего пользователя.
-func (u *User) UpdateProfile(ctx context.Context, displayName *string, username *string, bio *string, bannerID *string) (*types.UpdateProfileResponse, error) {
-	payload := make(map[string]string)
+func (u *User) UpdateProfile(ctx context.Context, config types.UpdateProfile) (*types.UpdateProfileResponse, error) {
 
-	if displayName != nil {
-		payload["displayName"] = *displayName
+	payload := UpdateProfile{
+		DisplayName: config.DisplayName,
+		Username:    config.Username,
+		Bio:         config.Bio,
 	}
-	if username != nil {
-		payload["username"] = *username
-	}
-	if bio != nil {
-		payload["bio"] = *bio
-	}
-	if bannerID != nil {
-		fmt.Println("в этой версии SDK баннер пока что нельзя менять")
-		payload["bannerId"] = *bannerID
+
+	if config.BannerPath != "" {
+		banner, err := u.transport.Upload(ctx, config.BannerPath)
+		if err != nil {
+			return nil, err
+		}
+		payload.BannerID = banner.ID
 	}
 
 	req, err := u.transport.NewRequest(ctx, "PUT", "/api/users/me", payload)
@@ -137,6 +136,7 @@ func (u *User) UpdateProfile(ctx context.Context, displayName *string, username 
 	return &result, nil
 }
 
+// GetFollowers реализует UserAPI.GetFollowers.
 func (u *User) GetFollowers(ctx context.Context, username string, limit int) ([]types.UserCompact, error) {
 	result, err := u.getFollowers(ctx, username, limit, 1)
 	if err != nil {
@@ -145,6 +145,7 @@ func (u *User) GetFollowers(ctx context.Context, username string, limit int) ([]
 	return result.Users, nil
 }
 
+// GetFollowing реализует UserAPI.GetFollowing.
 func (u *User) GetFollowing(ctx context.Context, username string, limit int) ([]types.UserCompact, error) {
 	result, err := u.getFollowing(ctx, username, limit, 1)
 	if err != nil {

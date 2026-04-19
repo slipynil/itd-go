@@ -2,13 +2,31 @@ package comments
 
 import "github.com/slipynil/itd-go/types"
 
+// createCommentRequest представляет запрос на создание комментария.
+type createCommentRequest struct {
+	Content       string   `json:"content,omitempty"`
+	AttachmentIDs []string `json:"attachmentIds,omitempty"`
+}
+
+// createReplyRequest представляет запрос на создание ответа на комментарий.
+type createReplyRequest struct {
+	ReplyToUserId string   `json:"replyToUserId,omitempty"`
+	Content       string   `json:"content,omitempty"`
+	AttachmentIDs []string `json:"attachmentIds,omitempty"`
+}
+
+// updateCommentRequest представляет запрос на обновление комментария.
+type updateCommentRequest struct {
+	Content string `json:"content,omitempty"`
+}
+
 // Response представляет ответ API при получении списка комментариев.
-type CommentsResponse struct {
+type commentsResponse struct {
 	// Data - данные с комментариями и информацией о пагинации
 	Data CommentsData `json:"data"`
 }
 
-type RepliesResponse struct {
+type repliesResponse struct {
 	Data RepliesData `json:"data"`
 }
 

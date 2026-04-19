@@ -120,6 +120,8 @@ type ReplyTo struct {
 	DisplayName string `json:"displayName"`
 }
 
+// CreateComment представляет результат создания комментария или ответа.
+// Возвращается методами CreateComment и CreateReply.
 type CreateComment struct {
 	// ID - уникальный идентификатор комментария
 	ID string `json:"id"`
