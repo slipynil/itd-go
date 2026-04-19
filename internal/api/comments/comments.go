@@ -3,6 +3,7 @@ package comments
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/go-json-experiment/json"
 
@@ -95,14 +96,16 @@ func (c *Comments) getReplyList(ctx context.Context, commentID string, limit int
 //
 // Возвращает созданный комментарий или ошибку при проблемах с сетью/API.
 func (c *Comments) CreateComment(ctx context.Context, postID string, content string, filePaths ...string) (*types.CreateComment, error) {
+	if postID == "" {
+		return nil, fmt.Errorf("postID cannot be empty")
+	}
+	if strings.TrimSpace(content) == "" && len(filePaths) == 0 {
+		return nil, fmt.Errorf("content or files required")
+	}
 
-	attachmentIDs := make([]string, 0, len(filePaths))
-	for _, path := range filePaths {
-		attachment, err := c.transport.Upload(ctx, path)
-		if err != nil {
-			return nil, err
-		}
-		attachmentIDs = append(attachmentIDs, attachment.ID)
+	attachmentIDs, err := c.transport.UploadFiles(ctx, filePaths...)
+	if err != nil {
+		return nil, err
 	}
 
 	payload := createCommentRequest{
@@ -146,14 +149,19 @@ func (c *Comments) CreateReply(
 	content string,
 	filePaths ...string,
 ) (*types.CreateComment, error) {
+	if parentCommentID == "" {
+		return nil, fmt.Errorf("parentCommentID cannot be empty")
+	}
+	if replyToUserID == "" {
+		return nil, fmt.Errorf("replyToUserID cannot be empty")
+	}
+	if strings.TrimSpace(content) == "" && len(filePaths) == 0 {
+		return nil, fmt.Errorf("content or files required")
+	}
 
-	attachmentIDs := make([]string, 0, len(filePaths))
-	for _, path := range filePaths {
-		attachment, err := c.transport.Upload(ctx, path)
-		if err != nil {
-			return nil, err
-		}
-		attachmentIDs = append(attachmentIDs, attachment.ID)
+	attachmentIDs, err := c.transport.UploadFiles(ctx, filePaths...)
+	if err != nil {
+		return nil, err
 	}
 
 	payload := createReplyRequest{
