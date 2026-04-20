@@ -12,34 +12,34 @@ import (
 )
 
 // Posts предоставляет методы для работы с постами ITD API.
-type Posts struct {
+type Service struct {
 	transport *transport.Client
 }
 
 // New создаёт новый экземпляр клиента для работы с постами.
-func New(t *transport.Client) *Posts {
-	return &Posts{transport: t}
+func New(t *transport.Client) *Service {
+	return &Service{transport: t}
 }
 
 // NewFeed возвращает итератор для получения постов.
-func (p *Posts) NewFeed(ctx context.Context, tab types.FeedTab, limit int) types.FeedIterator {
-	return newFeedIterator(p, ctx, tab, limit)
+func (s *Service) NewFeed(ctx context.Context, tab types.FeedTab, limit int) types.FeedIterator {
+	return newFeedIterator(s, ctx, tab, limit)
 }
 
 // NewUserPosts возвращает итератор для получения постов пользователя.
-func (p *Posts) NewUserPosts(ctx context.Context, username string, limit int) types.FeedIterator {
-	return newUserPostsIterator(p, ctx, username, limit)
+func (s *Service) NewUserPosts(ctx context.Context, username string, limit int) types.FeedIterator {
+	return newUserPostsIterator(s, ctx, username, limit)
 }
 
 // Get получает пост по его ID.
-func (p *Posts) Get(ctx context.Context, postID string) (*types.Post, error) {
+func (s *Service) Get(ctx context.Context, postID string) (*types.Post, error) {
 	path := fmt.Sprintf("/api/posts/%s", postID)
-	req, err := p.transport.NewRequest(ctx, "GET", path, nil)
+	req, err := s.transport.NewRequest(ctx, "GET", path, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := p.transport.Do(req)
+	resp, err := s.transport.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -58,12 +58,12 @@ func (p *Posts) Get(ctx context.Context, postID string) (*types.Post, error) {
 }
 
 // Create создаёт новый пост.
-func (p *Posts) Create(ctx context.Context, content string, filePaths ...string) (*types.Post, error) {
+func (s *Service) Create(ctx context.Context, content string, filePaths ...string) (*types.Post, error) {
 	if strings.TrimSpace(content) == "" && len(filePaths) == 0 {
 		return nil, fmt.Errorf("content or files required")
 	}
 
-	attachmentIDs, err := p.transport.UploadFiles(ctx, filePaths...)
+	attachmentIDs, err := s.transport.UploadFiles(ctx, filePaths...)
 	if err != nil {
 		return nil, err
 	}
@@ -73,12 +73,12 @@ func (p *Posts) Create(ctx context.Context, content string, filePaths ...string)
 		AttachmentIDs: attachmentIDs,
 	}
 
-	req, err := p.transport.NewRequest(ctx, "POST", "/api/posts", payload)
+	req, err := s.transport.NewRequest(ctx, "POST", "/api/posts", payload)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := p.transport.Do(req)
+	resp, err := s.transport.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +102,7 @@ func (p *Posts) Create(ctx context.Context, content string, filePaths ...string)
 //   - filePaths: пути к файлам для загрузки и прикрепления к посту
 //
 // Возвращает созданный пост с опросом или ошибку при проблемах с сетью/API.
-func (p *Posts) CreateWithPoll(ctx context.Context, content string, poll *types.PollRequest, filePaths ...string) (*types.Post, error) {
+func (s *Service) CreateWithPoll(ctx context.Context, content string, poll *types.PollRequest, filePaths ...string) (*types.Post, error) {
 	if poll == nil {
 		return nil, fmt.Errorf("poll cannot be nil")
 	}
@@ -110,7 +110,7 @@ func (p *Posts) CreateWithPoll(ctx context.Context, content string, poll *types.
 		return nil, fmt.Errorf("poll must have at least 2 options")
 	}
 
-	attachmentIDs, err := p.transport.UploadFiles(ctx, filePaths...)
+	attachmentIDs, err := s.transport.UploadFiles(ctx, filePaths...)
 	if err != nil {
 		return nil, err
 	}
@@ -121,12 +121,12 @@ func (p *Posts) CreateWithPoll(ctx context.Context, content string, poll *types.
 		Poll:          poll,
 	}
 
-	req, err := p.transport.NewRequest(ctx, "POST", "/api/posts", payload)
+	req, err := s.transport.NewRequest(ctx, "POST", "/api/posts", payload)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := p.transport.Do(req)
+	resp, err := s.transport.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -143,14 +143,14 @@ func (p *Posts) CreateWithPoll(ctx context.Context, content string, poll *types.
 }
 
 // Delete удаляет пост по его ID.
-func (p *Posts) Delete(ctx context.Context, postID string) error {
+func (s *Service) Delete(ctx context.Context, postID string) error {
 	path := fmt.Sprintf("/api/posts/%s", postID)
-	req, err := p.transport.NewRequest(ctx, "DELETE", path, nil)
+	req, err := s.transport.NewRequest(ctx, "DELETE", path, nil)
 	if err != nil {
 		return err
 	}
 
-	resp, err := p.transport.Do(req)
+	resp, err := s.transport.Do(req)
 	if err != nil {
 		return err
 	}
@@ -160,14 +160,14 @@ func (p *Posts) Delete(ctx context.Context, postID string) error {
 }
 
 // Like ставит лайк на пост.
-func (p *Posts) Like(ctx context.Context, postID string) (*types.LikesCountResponse, error) {
+func (s *Service) Like(ctx context.Context, postID string) (*types.LikesCountResponse, error) {
 	path := fmt.Sprintf("/api/posts/%s/like", postID)
-	req, err := p.transport.NewRequest(ctx, "POST", path, nil)
+	req, err := s.transport.NewRequest(ctx, "POST", path, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := p.transport.Do(req)
+	resp, err := s.transport.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -184,14 +184,14 @@ func (p *Posts) Like(ctx context.Context, postID string) (*types.LikesCountRespo
 }
 
 // Unlike убирает лайк с поста.
-func (p *Posts) Unlike(ctx context.Context, postID string) (*types.LikesCountResponse, error) {
+func (s *Service) Unlike(ctx context.Context, postID string) (*types.LikesCountResponse, error) {
 	path := fmt.Sprintf("/api/posts/%s/like", postID)
-	req, err := p.transport.NewRequest(ctx, "DELETE", path, nil)
+	req, err := s.transport.NewRequest(ctx, "DELETE", path, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := p.transport.Do(req)
+	resp, err := s.transport.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -208,19 +208,19 @@ func (p *Posts) Unlike(ctx context.Context, postID string) (*types.LikesCountRes
 }
 
 // Repost создаёт репост существующего поста.
-func (p *Posts) Repost(ctx context.Context, postID string, content string) (*types.Post, error) {
+func (s *Service) Repost(ctx context.Context, postID string, content string) (*types.Post, error) {
 	path := fmt.Sprintf("/api/posts/%s/repost", postID)
 
 	payload := repostRequest{
 		Content: content,
 	}
 
-	req, err := p.transport.NewRequest(ctx, "POST", path, payload)
+	req, err := s.transport.NewRequest(ctx, "POST", path, payload)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := p.transport.Do(req)
+	resp, err := s.transport.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -237,19 +237,19 @@ func (p *Posts) Repost(ctx context.Context, postID string, content string) (*typ
 }
 
 // Vote голосует в опросе, прикреплённом к посту.
-func (p *Posts) Vote(ctx context.Context, postID string, optionIDs ...string) (*types.Poll, error) {
+func (s *Service) Vote(ctx context.Context, postID string, optionIDs ...string) (*types.Poll, error) {
 	path := fmt.Sprintf("/api/posts/%s/poll/vote", postID)
 
 	payload := voteRequest{
 		OptionIds: optionIDs,
 	}
 
-	req, err := p.transport.NewRequest(ctx, "POST", path, payload)
+	req, err := s.transport.NewRequest(ctx, "POST", path, payload)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := p.transport.Do(req)
+	resp, err := s.transport.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -268,15 +268,15 @@ func (p *Posts) Vote(ctx context.Context, postID string, optionIDs ...string) (*
 }
 
 // View отмечает пост как просмотренный.
-func (p *Posts) View(ctx context.Context, postID string) (*types.PostViewResponse, error) {
+func (s *Service) View(ctx context.Context, postID string) (*types.PostViewResponse, error) {
 	path := fmt.Sprintf("/api/posts/%s/view", postID)
 
-	req, err := p.transport.NewRequest(ctx, "POST", path, nil)
+	req, err := s.transport.NewRequest(ctx, "POST", path, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := p.transport.Do(req)
+	resp, err := s.transport.Do(req)
 	if err != nil {
 		return nil, err
 	}

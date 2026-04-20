@@ -11,23 +11,23 @@ import (
 )
 
 // User предоставляет методы для работы с пользователями ITD API.
-type User struct {
+type Service struct {
 	transport *transport.Client
 }
 
 // New создаёт новый экземпляр клиента для работы с пользователями.
-func New(t *transport.Client) *User {
-	return &User{transport: t}
+func New(t *transport.Client) *Service {
+	return &Service{transport: t}
 }
 
 // Me получает информацию о текущем аутентифицированном пользователе.
-func (u *User) Me(ctx context.Context) (*types.Me, error) {
-	req, err := u.transport.NewRequest(ctx, "GET", "/api/users/me", nil)
+func (s *Service) Me(ctx context.Context) (*types.Me, error) {
+	req, err := s.transport.NewRequest(ctx, "GET", "/api/users/me", nil)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := u.transport.Do(req)
+	resp, err := s.transport.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -43,14 +43,14 @@ func (u *User) Me(ctx context.Context) (*types.Me, error) {
 }
 
 // Get получает информацию о пользователе по его username.
-func (u *User) Get(ctx context.Context, username string) (*types.User, error) {
+func (s *Service) Get(ctx context.Context, username string) (*types.User, error) {
 	path := fmt.Sprintf("/api/users/%s", username)
-	req, err := u.transport.NewRequest(ctx, "GET", path, nil)
+	req, err := s.transport.NewRequest(ctx, "GET", path, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := u.transport.Do(req)
+	resp, err := s.transport.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -66,14 +66,14 @@ func (u *User) Get(ctx context.Context, username string) (*types.User, error) {
 }
 
 // Follow подписывается на пользователя.
-func (u *User) Follow(ctx context.Context, username string) error {
+func (s *Service) Follow(ctx context.Context, username string) error {
 	path := fmt.Sprintf("/api/users/%s/follow", username)
-	req, err := u.transport.NewRequest(ctx, "POST", path, nil)
+	req, err := s.transport.NewRequest(ctx, "POST", path, nil)
 	if err != nil {
 		return err
 	}
 
-	resp, err := u.transport.Do(req)
+	resp, err := s.transport.Do(req)
 	if err != nil {
 		return err
 	}
@@ -83,14 +83,14 @@ func (u *User) Follow(ctx context.Context, username string) error {
 }
 
 // Unfollow отписывается от пользователя.
-func (u *User) Unfollow(ctx context.Context, username string) error {
+func (s *Service) Unfollow(ctx context.Context, username string) error {
 	path := fmt.Sprintf("/api/users/%s/follow", username)
-	req, err := u.transport.NewRequest(ctx, "DELETE", path, nil)
+	req, err := s.transport.NewRequest(ctx, "DELETE", path, nil)
 	if err != nil {
 		return err
 	}
 
-	resp, err := u.transport.Do(req)
+	resp, err := s.transport.Do(req)
 	if err != nil {
 		return err
 	}
@@ -100,7 +100,7 @@ func (u *User) Unfollow(ctx context.Context, username string) error {
 }
 
 // UpdateProfile обновляет профиль текущего пользователя.
-func (u *User) UpdateProfile(ctx context.Context, config types.UpdateProfile) (*types.UpdateProfileResponse, error) {
+func (s *Service) UpdateProfile(ctx context.Context, config types.UpdateProfile) (*types.UpdateProfileResponse, error) {
 
 	payload := UpdateProfile{
 		DisplayName: config.DisplayName,
@@ -109,19 +109,19 @@ func (u *User) UpdateProfile(ctx context.Context, config types.UpdateProfile) (*
 	}
 
 	if config.BannerPath != "" {
-		banner, err := u.transport.Upload(ctx, config.BannerPath)
+		banner, err := s.transport.Upload(ctx, config.BannerPath)
 		if err != nil {
 			return nil, err
 		}
 		payload.BannerID = banner.ID
 	}
 
-	req, err := u.transport.NewRequest(ctx, "PUT", "/api/users/me", payload)
+	req, err := s.transport.NewRequest(ctx, "PUT", "/api/users/me", payload)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := u.transport.Do(req)
+	resp, err := s.transport.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -137,8 +137,8 @@ func (u *User) UpdateProfile(ctx context.Context, config types.UpdateProfile) (*
 }
 
 // GetFollowers реализует UserAPI.GetFollowers.
-func (u *User) GetFollowers(ctx context.Context, username string, limit int) ([]types.UserCompact, error) {
-	result, err := u.getFollowers(ctx, username, limit, 1)
+func (s *Service) GetFollowers(ctx context.Context, username string, limit int) ([]types.UserCompact, error) {
+	result, err := s.getFollowers(ctx, username, limit, 1)
 	if err != nil {
 		return nil, err
 	}
@@ -146,8 +146,8 @@ func (u *User) GetFollowers(ctx context.Context, username string, limit int) ([]
 }
 
 // GetFollowing реализует UserAPI.GetFollowing.
-func (u *User) GetFollowing(ctx context.Context, username string, limit int) ([]types.UserCompact, error) {
-	result, err := u.getFollowing(ctx, username, limit, 1)
+func (s *Service) GetFollowing(ctx context.Context, username string, limit int) ([]types.UserCompact, error) {
+	result, err := s.getFollowing(ctx, username, limit, 1)
 	if err != nil {
 		return nil, err
 	}
@@ -155,16 +155,16 @@ func (u *User) GetFollowing(ctx context.Context, username string, limit int) ([]
 }
 
 // getFollowers получает подписчиков с page-based пагинацией (внутренний метод для итератора).
-func (u *User) getFollowers(ctx context.Context, username string, limit, page int) (*UsersData, error) {
+func (s *Service) getFollowers(ctx context.Context, username string, limit, page int) (*UsersData, error) {
 
 	path := fmt.Sprintf("/api/users/%s/followers?limit=%d&page=%d", username, limit, page)
 
-	req, err := u.transport.NewRequest(ctx, "GET", path, nil)
+	req, err := s.transport.NewRequest(ctx, "GET", path, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := u.transport.Do(req)
+	resp, err := s.transport.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -179,16 +179,16 @@ func (u *User) getFollowers(ctx context.Context, username string, limit, page in
 }
 
 // getFollowing получает подписки с page-based пагинацией (внутренний метод для итератора).
-func (u *User) getFollowing(ctx context.Context, userID string, limit, page int) (*UsersData, error) {
+func (s *Service) getFollowing(ctx context.Context, userID string, limit, page int) (*UsersData, error) {
 
 	path := fmt.Sprintf("/api/users/%s/following?limit=%d&page=%d", userID, limit, page)
 
-	req, err := u.transport.NewRequest(ctx, "GET", path, nil)
+	req, err := s.transport.NewRequest(ctx, "GET", path, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := u.transport.Do(req)
+	resp, err := s.transport.Do(req)
 	if err != nil {
 		return nil, err
 	}

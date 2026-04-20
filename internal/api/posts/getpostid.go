@@ -11,15 +11,15 @@ import (
 )
 
 // getFeed возвращает api структуру с полями от получения постов
-func (p *Posts) getFeed(ctx context.Context, tab types.FeedTab, cursor string, limit int) (*FeedData, error) {
+func (s *Service) getFeed(ctx context.Context, tab types.FeedTab, cursor string, limit int) (*FeedData, error) {
 
 	path := fmt.Sprintf("/api/posts?limit=%d&tab=%v&cursor=%s", limit, tab, cursor)
-	req, err := p.transport.NewRequest(ctx, "GET", path, nil)
+	req, err := s.transport.NewRequest(ctx, "GET", path, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := p.transport.Do(req)
+	resp, err := s.transport.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -35,15 +35,15 @@ func (p *Posts) getFeed(ctx context.Context, tab types.FeedTab, cursor string, l
 }
 
 // getUserPosts возвращает api структуру с полями от получения постов пользователя
-func (p *Posts) getUserPosts(ctx context.Context, username string, limit int, cursor string) (*FeedData, error) {
+func (s *Service) getUserPosts(ctx context.Context, username string, limit int, cursor string) (*FeedData, error) {
 
 	path := fmt.Sprintf("/api/posts/user/%s?limit=%d&sort=new&cursor=%s", username, limit, cursor)
-	req, err := p.transport.NewRequest(ctx, "GET", path, nil)
+	req, err := s.transport.NewRequest(ctx, "GET", path, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := p.transport.Do(req)
+	resp, err := s.transport.Do(req)
 	if err != nil {
 		return nil, err
 	}

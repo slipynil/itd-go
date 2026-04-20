@@ -8,9 +8,9 @@ import (
 )
 
 // newFeedIterator создаёт итератор для получения ленты постов.
-func newFeedIterator(client *Posts, ctx context.Context, tab types.FeedTab, limit int) types.FeedIterator {
+func newFeedIterator(s *Service, ctx context.Context, tab types.FeedTab, limit int) types.FeedIterator {
 	fetch := func(ctx context.Context, token iterator.PageToken) ([]*types.Post, iterator.PageToken, bool, error) {
-		result, err := client.getFeed(ctx, tab, token.Cursor, limit)
+		result, err := s.getFeed(ctx, tab, token.Cursor, limit)
 		if err != nil {
 			return nil, iterator.PageToken{}, false, err
 		}
@@ -22,9 +22,9 @@ func newFeedIterator(client *Posts, ctx context.Context, tab types.FeedTab, limi
 }
 
 // newUserPostsIterator создаёт итератор для получения постов пользователя.
-func newUserPostsIterator(client *Posts, ctx context.Context, username string, limit int) types.FeedIterator {
+func newUserPostsIterator(s *Service, ctx context.Context, username string, limit int) types.FeedIterator {
 	fetch := func(ctx context.Context, token iterator.PageToken) ([]*types.Post, iterator.PageToken, bool, error) {
-		result, err := client.getUserPosts(ctx, username, limit, token.Cursor)
+		result, err := s.getUserPosts(ctx, username, limit, token.Cursor)
 		if err != nil {
 			return nil, iterator.PageToken{}, false, err
 		}

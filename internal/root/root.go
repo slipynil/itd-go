@@ -15,13 +15,13 @@ import (
 // Содержит клиенты для работы с постами, пользователями и комментариями.
 type Client struct {
 	// Posts - клиент для работы с постами
-	Posts *posts.Posts
+	Posts *posts.Service
 
 	// User - клиент для работы с пользователями
-	User *user.User
+	User *user.Service
 
 	// Comments - клиент для работы с комментариями
-	Comments *comments.Comments
+	Comments *comments.Service
 }
 
 // New создаёт новый корневой клиент SDK с настроенной аутентификацией.
