@@ -3,8 +3,8 @@ package transport
 import (
 	"net/http"
 
+	"github.com/slipynil/itd-go/errors"
 	"github.com/slipynil/itd-go/internal/auth"
-	"github.com/slipynil/itd-go/internal/pkg/errors"
 )
 
 // authMiddleware добавляет заголовок Authorization с Bearer токеном к каждому запросу.

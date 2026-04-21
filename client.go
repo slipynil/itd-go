@@ -6,8 +6,10 @@ import (
 	"io"
 	"os"
 
+	"github.com/slipynil/itd-go/api/comments"
+	"github.com/slipynil/itd-go/api/posts"
+	"github.com/slipynil/itd-go/api/user"
 	"github.com/slipynil/itd-go/internal/root"
-	"github.com/slipynil/itd-go/types"
 )
 
 // ITD_DOMAIN - доменное имя ITD API в формате punycode.
@@ -17,19 +19,19 @@ const ITD_DOMAIN string = "xn--d1ah4a.com"
 const BASE_URL string = "https://" + ITD_DOMAIN
 
 // SDK_VERSION - текущая версия ITD Go SDK.
-const SDK_VERSION string = "0.2.1"
+const SDK_VERSION string = "0.3.0"
 
 // Client - главный клиент ITD SDK для взаимодействия с API.
 // Предоставляет доступ к различным группам API методов.
 type Client struct {
 	// Posts - API для работы с постами
-	Posts types.PostsAPI
+	Posts posts.Service
 
 	// User - API для работы с пользователями
-	User types.UserAPI
+	User user.Service
 
 	// Comments - API для работы с комментариями
-	Comments types.CommentsAPI
+	Comments comments.Service
 }
 
 // New создаёт и инициализирует новый экземпляр ITD клиента.
@@ -58,9 +60,9 @@ func New(ctx context.Context, cfg Config) (*Client, error) {
 	}
 
 	return &Client{
-		Posts:    root.Posts,
-		User:     root.User,
-		Comments: root.Comments,
+		Posts:    *root.Posts,
+		User:     *root.User,
+		Comments: *root.Comments,
 	}, nil
 }
 

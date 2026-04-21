@@ -18,8 +18,8 @@
 └──────────────┬──────────────────────┘
                │
 ┌──────────────▼──────────────────────┐
-│  API Layer (internal/api/)          │
-│  - posts, user, comments            │
+│  API Layer (api/)                   │
+│  - posts, user, comments             │
 │  - Бизнес-логика, итераторы        │
 └──────────────┬──────────────────────┘
                │
@@ -91,7 +91,7 @@ post, err := client.Posts.Create(ctx, "Контент", "/path/to/image.jpg")
 
 - **types/** — публичные типы и интерфейсы API
 - **internal/dto/** — внутренние DTO для парсинга ответов API
-- **internal/api/*/dto.go** — DTO специфичные для каждого API модуля
+- **api/*/dto.go** — DTO специфичные для каждого API модуля
 
 ## Стандарты кодирования
 
@@ -130,22 +130,9 @@ type APIError struct {
 
 ## Как добавить новый API метод
 
-### 1. Определить интерфейс в types/interfaces.go
+### 1. Добавить DTO (если нужно)
 
-```go
-type PostsAPI interface {
-    // NewMethod описание метода.
-    // Параметры:
-    //   - ctx: контекст
-    //   - param: описание параметра
-    // Возвращает результат или ошибку.
-    NewMethod(ctx context.Context, param string) (*Result, error)
-}
-```
-
-### 2. Добавить DTO (если нужно)
-
-В `internal/api/posts/dto.go`:
+В `api/posts/dto.go`:
 
 ```go
 // ResponseNewMethod представляет ответ API для нового метода.
@@ -155,13 +142,18 @@ type ResponseNewMethod struct {
 }
 ```
 
-### 3. Реализовать метод
+### 2. Реализовать метод
 
-В `internal/api/posts/posts.go`:
+В `api/posts/posts.go`:
 
 ```go
-// NewMethod реализует PostsAPI.NewMethod.
-func (p *Posts) NewMethod(ctx context.Context, param string) (*types.Result, error) {
+// NewMethod описание метода.
+// Параметры:
+//   - ctx: контекст для управления временем жизни запроса
+//   - param: описание параметра
+//
+// Возвращает результат или ошибку при проблемах с сетью/API.
+func (s *Service) NewMethod(ctx context.Context, param string) (*types.Result, error) {
     path := fmt.Sprintf("/api/posts/%s", param)
     
     req, err := p.transport.NewRequest(ctx, "GET", path, nil)
@@ -184,7 +176,7 @@ func (p *Posts) NewMethod(ctx context.Context, param string) (*types.Result, err
 }
 ```
 
-### 4. Добавить пример использования
+### 3. Добавить пример использования
 
 В `examples/posts/new_method.go`:
 
@@ -221,24 +213,19 @@ func main() {
 
 Если метод должен поддерживать загрузку файлов:
 
-### 1. Определить интерфейс с filePaths
+### 1. Реализовать с автозагрузкой
+
+В `api/posts/posts.go`:
 
 ```go
-type PostsAPI interface {
-    // CreateSomething создаёт что-то с файлами.
-    // Параметры:
-    //   - ctx: контекст
-    //   - content: текстовое содержимое
-    //   - filePaths: пути к файлам для автоматической загрузки
-    // Возвращает результат или ошибку.
-    CreateSomething(ctx context.Context, content string, filePaths ...string) (*Result, error)
-}
-```
-
-### 2. Реализовать с автозагрузкой
-
-```go
-func (p *Posts) CreateSomething(ctx context.Context, content string, filePaths ...string) (*types.Result, error) {
+// CreateSomething создаёт что-то с файлами.
+// Параметры:
+//   - ctx: контекст для управления временем жизни запроса
+//   - content: текстовое содержимое
+//   - filePaths: пути к файлам для автоматической загрузки
+//
+// Возвращает результат или ошибку при проблемах с сетью/API.
+func (s *Service) CreateSomething(ctx context.Context, content string, filePaths ...string) (*types.Result, error) {
     // Загружаем файлы и получаем их ID
     attachmentIDs := make([]string, 0, len(filePaths))
     for _, path := range filePaths {
@@ -278,18 +265,39 @@ func (p *Posts) CreateSomething(ctx context.Context, content string, filePaths .
 
 ## Как создать новый итератор
 
-### 1. Определить тип в types/interfaces.go
+### 1. Определить интерфейс в пакете, где он используется
+
+**Важно:** В Go интерфейсы определяются там, где они используются, а не в центральном пакете types.
+
+В файле `api/yourmodule/iterator.go`:
 
 ```go
-type NewIterator = Iterator[*NewType]
+package yourmodule
+
+import (
+    "context"
+    "github.com/slipynil/itd-go/types"
+)
+
+// YourIterator предоставляет интерфейс для постраничной загрузки данных.
+type YourIterator interface {
+    // HasMore возвращает true, если есть ещё данные для загрузки.
+    HasMore() bool
+    // Next загружает и возвращает следующую страницу данных.
+    // Параметры:
+    //   - ctx: контекст для управления временем жизни запроса
+    Next(ctx context.Context) ([]*types.YourType, error)
+}
 ```
 
 ### 2. Создать функцию-конструктор
 
+В том же файле `internal/api/yourmodule/iterator.go`:
+
 ```go
-func newNewIterator(client *Client, ctx context.Context, limit int) types.NewIterator {
-    fetch := func(ctx context.Context, token iterator.PageToken) ([]*types.NewType, iterator.PageToken, bool, error) {
-        result, err := client.getNewData(ctx, token.Cursor, limit)
+func newYourIterator(ctx context.Context, s *Service, limit int) YourIterator {
+    fetch := func(ctx context.Context, token iterator.PageToken) ([]*types.YourType, iterator.PageToken, bool, error) {
+        result, err := s.getYourData(ctx, token.Cursor, limit)
         if err != nil {
             return nil, iterator.PageToken{}, false, err
         }
@@ -297,16 +305,39 @@ func newNewIterator(client *Client, ctx context.Context, limit int) types.NewIte
         return result.Items, next, result.HasMore, nil
     }
     
-    return iterator.New[*types.NewType](ctx, fetch, iterator.PageToken{})
+    return iterator.New[*types.YourType](fetch, iterator.PageToken{})
 }
 ```
 
 ### 3. Добавить публичный метод
 
+В файле `api/yourmodule/yourmodule.go`:
+
 ```go
-func (c *Client) NewIterator(ctx context.Context, limit int) types.NewIterator {
-    return newNewIterator(c, ctx, limit)
+func (s *Service) NewYourIterator(ctx context.Context, limit int) YourIterator {
+    return newYourIterator(ctx, s, limit)
 }
+```
+
+### 4. Использование итератора
+
+```go
+ctx := context.Background()
+iter := service.NewYourIterator(ctx, 20)
+
+for iter.HasMore() {
+    items, err := iter.Next(ctx)
+    if err != nil {
+        log.Fatal(err)
+    }
+    // обработка items
+}
+```
+
+**Важно:** 
+- Контекст передаётся как первый параметр в конструктор итератора
+- Контекст также передаётся в метод `Next(ctx)` при каждом вызове
+- Не храните контекст в структуре итератора (антипатерн в Go)
 ```
 
 ## Структура проекта
@@ -316,17 +347,16 @@ itd-go/
 ├── client.go              # Главный клиент SDK
 ├── config.go              # Конфигурация SDK
 ├── types/                 # Публичные типы и интерфейсы
-│   ├── interfaces.go      # API интерфейсы
 │   ├── post.go           # Типы для постов
 │   ├── comment.go        # Типы для комментариев
 │   ├── user.go           # Типы для пользователей
 │   ├── feedTab.go        # Enum для типов ленты
 │   └── pin.go            # Типы для значков
+├── api/                  # Публичные API реализации
+│   ├── posts/            # API постов
+│   ├── comments/         # API комментариев
+│   └── user/             # API пользователей
 ├── internal/
-│   ├── api/              # Реализации API
-│   │   ├── posts/        # API постов
-│   │   ├── comments/     # API комментариев
-│   │   └── user/         # API пользователей
 │   ├── auth/             # Аутентификация
 │   ├── transport/        # HTTP транспорт
 │   │   ├── transport.go  # HTTP клиент и middleware
@@ -346,7 +376,6 @@ itd-go/
 
 ## Важные файлы
 
-- **types/interfaces.go** — все публичные API интерфейсы
 - **client.go** — точка входа в SDK
 - **internal/pkg/iterator/iterator.go** — базовая реализация итератора
 - **internal/transport/transport.go** — HTTP клиент

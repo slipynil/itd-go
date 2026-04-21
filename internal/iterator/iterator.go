@@ -20,21 +20,19 @@ type Iterator[T any] interface {
 	// HasMore возвращает true, если есть ещё данные для загрузки.
 	HasMore() bool
 	// Next загружает и возвращает следующую страницу данных.
-	Next() ([]T, error)
+	Next(ctx context.Context) ([]T, error)
 }
 
 // paginatedIterator реализует Iterator с использованием cursor-based пагинации.
 type paginatedIterator[T any] struct {
-	ctx     context.Context
 	fetch   FetchFunc[T]
 	token   PageToken
 	hasMore bool
 }
 
 // New создаёт новый итератор с заданной функцией получения данных.
-func New[T any](ctx context.Context, fetch FetchFunc[T], startToken PageToken) Iterator[T] {
+func New[T any](fetch FetchFunc[T], startToken PageToken) Iterator[T] {
 	return &paginatedIterator[T]{
-		ctx:     ctx,
 		fetch:   fetch,
 		token:   startToken,
 		hasMore: true,
@@ -45,8 +43,8 @@ func (i *paginatedIterator[T]) HasMore() bool {
 	return i.hasMore
 }
 
-func (i *paginatedIterator[T]) Next() ([]T, error) {
-	items, next, hasMore, err := i.fetch(i.ctx, i.token)
+func (i *paginatedIterator[T]) Next(ctx context.Context) ([]T, error) {
+	items, next, hasMore, err := i.fetch(ctx, i.token)
 	if err != nil {
 		return nil, err
 	}

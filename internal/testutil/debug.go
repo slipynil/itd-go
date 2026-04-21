@@ -1,4 +1,4 @@
-package raws
+package testutil
 
 import (
 	"bytes"

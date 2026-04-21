@@ -9,9 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/slipynil/itd-go/internal/dto"
-	"github.com/slipynil/itd-go/internal/pkg/errors"
-	pkg "github.com/slipynil/itd-go/internal/pkg/jwt"
+	"github.com/slipynil/itd-go/errors"
 )
 
 // Client реализует Provider, используя refresh token для аутентификации.
@@ -103,7 +101,7 @@ func (r *Client) refreshAccessToken(ctx context.Context) (string, error) {
 	}
 
 	// Декодируем ответ
-	data := new(dto.AuthResponse)
+	data := new(AuthResponse)
 	if err := json.NewDecoder(resp.Body).Decode(data); err != nil {
 		return "", fmt.Errorf("ошибка при декодировании ответа: %w", err)
 	}
@@ -112,7 +110,7 @@ func (r *Client) refreshAccessToken(ctx context.Context) (string, error) {
 		return "", fmt.Errorf("получен пустой access token")
 	}
 
-	expiry, err := pkg.ParseJWTExpiry(data.AccessToken)
+	expiry, err := ParseJWTExpiry(data.AccessToken)
 	if err != nil {
 		expiry = time.Now().Add(604800 * time.Second)
 	}
@@ -159,7 +157,7 @@ func (r *Client) fetchUserID(ctx context.Context) error {
 	}
 
 	// Декодируем ответ
-	var userData dto.UserIDResponse
+	var userData UserIDResponse
 	if err := json.NewDecoder(resp.Body).Decode(&userData); err != nil {
 		return fmt.Errorf("ошибка при декодировании ответа: %w", err)
 	}

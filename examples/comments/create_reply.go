@@ -35,7 +35,7 @@ func main() {
 		log.Fatal("Нет комментариев для ответа")
 	}
 
-	comments, err := iter.Next()
+	comments, err := iter.Next(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -11,14 +11,14 @@ import (
 	"github.com/slipynil/itd-go/types"
 )
 
-// Comments предоставляет методы для работы с комментариями ITD API.
-type Comments struct {
+// Service предоставляет методы для работы с комментариями ITD API.
+type Service struct {
 	transport *transport.Client
 }
 
 // New создаёт новый экземпляр клиента для работы с комментариями.
-func New(t *transport.Client) *Comments {
-	return &Comments{transport: t}
+func New(t *transport.Client) *Service {
+	return &Service{transport: t}
 }
 
 // NewCommentList создаёт итератор для получения комментариев к посту.
@@ -28,51 +28,34 @@ func New(t *transport.Client) *Comments {
 //   - limit: количество комментариев на страницу (рекомендуется 10-20)
 //
 // Возвращает CommentIterator для постраничной загрузки комментариев.
-func (c *Comments) NewCommentList(ctx context.Context, postID string, limit int) types.CommentIterator {
-	return commentListIterator(c, ctx, postID, limit)
-}
-
-// getCommentList получает сырую json стурктуру с комментариями и информацией о пагинации.
-func (c *Comments) getCommentList(ctx context.Context, postID, cursor string, limit int) (*commentsResponse, error) {
-	path := fmt.Sprintf("/api/posts/%s/comments?limit=%d&sort=popular", postID, limit)
-
-	req, err := c.transport.NewRequest(ctx, "GET", path, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := c.transport.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	var result commentsResponse
-	if err := json.UnmarshalRead(resp.Body, &result, transport.DataOptions); err != nil {
-		return nil, err
-	}
-
-	return &result, nil
+func (s *Service) NewCommentList(ctx context.Context, postID string, limit int) CommentIterator {
+	return commentListIterator(ctx, s, postID, limit)
 }
 
 // ListReplies получает список ответов на комментарий.
-func (c *Comments) ListReplies(ctx context.Context, commentID string, limit int) ([]*types.Comment, error) {
-	result, err := c.getReplyList(ctx, commentID, limit)
+// Параметры:
+//   - ctx: контекст для управления временем жизни запроса
+//   - commentID: идентификатор комментария
+//   - limit: количество ответов на страницу
+//
+// Возвращает массив ответов или ошибку при проблемах с сетью/API.
+func (s *Service) ListReplies(ctx context.Context, commentID string, limit int) ([]*types.Comment, error) {
+	result, err := s.getReplyList(ctx, commentID, limit)
 	if err != nil {
 		return nil, err
 	}
 	return result.Data.Replies, nil
 }
 
-func (c *Comments) getReplyList(ctx context.Context, commentID string, limit int) (*repliesResponse, error) {
+func (s *Service) getReplyList(ctx context.Context, commentID string, limit int) (*repliesResponse, error) {
 	path := fmt.Sprintf("/api/comments/%s/replies?limit=%d", commentID, limit)
 
-	req, err := c.transport.NewRequest(ctx, "GET", path, nil)
+	req, err := s.transport.NewRequest(ctx, "GET", path, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := c.transport.Do(req)
+	resp, err := s.transport.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +78,7 @@ func (c *Comments) getReplyList(ctx context.Context, commentID string, limit int
 //   - filePaths: пути к файлам для загрузки и прикрепления к комментарию
 //
 // Возвращает созданный комментарий или ошибку при проблемах с сетью/API.
-func (c *Comments) CreateComment(ctx context.Context, postID string, content string, filePaths ...string) (*types.CreateComment, error) {
+func (s *Service) CreateComment(ctx context.Context, postID string, content string, filePaths ...string) (*types.CreateComment, error) {
 	if postID == "" {
 		return nil, fmt.Errorf("postID cannot be empty")
 	}
@@ -103,7 +86,7 @@ func (c *Comments) CreateComment(ctx context.Context, postID string, content str
 		return nil, fmt.Errorf("content or files required")
 	}
 
-	attachmentIDs, err := c.transport.UploadFiles(ctx, filePaths...)
+	attachmentIDs, err := s.transport.UploadFiles(ctx, filePaths...)
 	if err != nil {
 		return nil, err
 	}
@@ -114,12 +97,12 @@ func (c *Comments) CreateComment(ctx context.Context, postID string, content str
 	}
 
 	path := fmt.Sprintf("/api/posts/%s/comments", postID)
-	req, err := c.transport.NewRequest(ctx, "POST", path, payload)
+	req, err := s.transport.NewRequest(ctx, "POST", path, payload)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := c.transport.Do(req)
+	resp, err := s.transport.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +125,7 @@ func (c *Comments) CreateComment(ctx context.Context, postID string, content str
 //   - filePaths: пути к файлам для загрузки и прикрепления к ответу
 //
 // Возвращает созданный ответ или ошибку при проблемах с сетью/API.
-func (c *Comments) CreateReply(
+func (s *Service) CreateReply(
 	ctx context.Context,
 	parentCommentID,
 	replyToUserID,
@@ -159,7 +142,7 @@ func (c *Comments) CreateReply(
 		return nil, fmt.Errorf("content or files required")
 	}
 
-	attachmentIDs, err := c.transport.UploadFiles(ctx, filePaths...)
+	attachmentIDs, err := s.transport.UploadFiles(ctx, filePaths...)
 	if err != nil {
 		return nil, err
 	}
@@ -171,12 +154,12 @@ func (c *Comments) CreateReply(
 	}
 
 	path := fmt.Sprintf("/api/comments/%s/replies", parentCommentID)
-	req, err := c.transport.NewRequest(ctx, "POST", path, payload)
+	req, err := s.transport.NewRequest(ctx, "POST", path, payload)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := c.transport.Do(req)
+	resp, err := s.transport.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -191,15 +174,20 @@ func (c *Comments) CreateReply(
 }
 
 // Delete удаляет комментарий по его ID.
-func (c *Comments) Delete(ctx context.Context, commentID string) error {
+// Параметры:
+//   - ctx: контекст для управления временем жизни запроса
+//   - commentID: идентификатор комментария для удаления
+//
+// Возвращает ошибку при проблемах с сетью/API или если комментарий не найден.
+func (s *Service) Delete(ctx context.Context, commentID string) error {
 	path := fmt.Sprintf("/api/comments/%s", commentID)
 
-	req, err := c.transport.NewRequest(ctx, "DELETE", path, nil)
+	req, err := s.transport.NewRequest(ctx, "DELETE", path, nil)
 	if err != nil {
 		return err
 	}
 
-	resp, err := c.transport.Do(req)
+	resp, err := s.transport.Do(req)
 	if err != nil {
 		return err
 	}
@@ -209,15 +197,20 @@ func (c *Comments) Delete(ctx context.Context, commentID string) error {
 }
 
 // Like ставит лайк на комментарий.
-func (c *Comments) Like(ctx context.Context, commentID string) error {
+// Параметры:
+//   - ctx: контекст для управления временем жизни запроса
+//   - commentID: идентификатор комментария
+//
+// Возвращает ошибку при проблемах с сетью/API.
+func (s *Service) Like(ctx context.Context, commentID string) error {
 	path := fmt.Sprintf("/api/comments/%s/like", commentID)
 
-	req, err := c.transport.NewRequest(ctx, "POST", path, nil)
+	req, err := s.transport.NewRequest(ctx, "POST", path, nil)
 	if err != nil {
 		return err
 	}
 
-	resp, err := c.transport.Do(req)
+	resp, err := s.transport.Do(req)
 	if err != nil {
 		return err
 	}
@@ -227,15 +220,20 @@ func (c *Comments) Like(ctx context.Context, commentID string) error {
 }
 
 // Unlike убирает лайк с комментария.
-func (c *Comments) Unlike(ctx context.Context, commentID string) error {
+// Параметры:
+//   - ctx: контекст для управления временем жизни запроса
+//   - commentID: идентификатор комментария
+//
+// Возвращает ошибку при проблемах с сетью/API.
+func (s *Service) Unlike(ctx context.Context, commentID string) error {
 	path := fmt.Sprintf("/api/comments/%s/like", commentID)
 
-	req, err := c.transport.NewRequest(ctx, "DELETE", path, nil)
+	req, err := s.transport.NewRequest(ctx, "DELETE", path, nil)
 	if err != nil {
 		return err
 	}
 
-	resp, err := c.transport.Do(req)
+	resp, err := s.transport.Do(req)
 	if err != nil {
 		return err
 	}
@@ -245,19 +243,25 @@ func (c *Comments) Unlike(ctx context.Context, commentID string) error {
 }
 
 // Update обновляет содержимое комментария.
-func (c *Comments) Update(ctx context.Context, commentID string, content string) (*types.CommentUpdate, error) {
+// Параметры:
+//   - ctx: контекст для управления временем жизни запроса
+//   - commentID: идентификатор комментария
+//   - content: новое текстовое содержимое
+//
+// Возвращает обновлённый комментарий или ошибку при проблемах с сетью/API.
+func (s *Service) Update(ctx context.Context, commentID string, content string) (*types.CommentUpdate, error) {
 	path := fmt.Sprintf("/api/comments/%s", commentID)
 
 	payload := updateCommentRequest{
 		Content: content,
 	}
 
-	req, err := c.transport.NewRequest(ctx, "PATCH", path, payload)
+	req, err := s.transport.NewRequest(ctx, "PATCH", path, payload)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := c.transport.Do(req)
+	resp, err := s.transport.Do(req)
 	if err != nil {
 		return nil, err
 	}

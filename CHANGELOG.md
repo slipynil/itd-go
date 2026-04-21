@@ -2,6 +2,53 @@
 
 Все значимые изменения в проекте будут документированы в этом файле.
 
+## [0.3.0] - 2026-04-21
+
+### Изменено
+
+- **BREAKING**: Удалены интерфейсы `PostsAPI`, `UserAPI`, `CommentsAPI` из `types/interfaces.go`. Клиент теперь использует конкретные типы `posts.Service`, `user.Service`, `comments.Service` вместо интерфейсов
+- **Архитектурный рефакторинг**: API слой перемещён из `internal/api/` в публичный пакет `api/`
+  - `internal/api/posts/` → `api/posts/`
+  - `internal/api/comments/` → `api/comments/`
+  - `internal/api/user/` → `api/user/`
+
+### Внутренние изменения
+
+- Создан отдельный пакет `errors/` для обработки ошибок API и транспортного слоя
+  - `internal/dto/errors.go` → `errors/APIerrors.go`
+  - `internal/pkg/errors/httperrors.go` → `errors/transportErrors.go`
+- Реорганизация итераторов:
+  - Перемещён базовый итератор: `internal/pkg/iterator/` → `internal/iterator/`
+  - Созданы специализированные файлы итераторов в каждом API пакете (`api/posts/iterator.go`, `api/comments/iterator.go`)
+  - Удалены старые реализации итераторов (`feediterator.go`, специфичные для каждого модуля)
+- Консолидация пакета аутентификации:
+  - `internal/dto/auth.go` → `internal/auth/dto.go`
+  - `internal/pkg/jwt/jwtparser.go` → `internal/auth/jwt.go`
+- Удалены неиспользуемые файлы:
+  - `internal/api/posts/getpostid.go`
+  - `internal/pkg/raws/rawanswer.go` (перемещён в `internal/testutil/debug.go`)
+- Обновлена документация в `CLAUDE.md` и `README.md` для отражения новой структуры проекта
+
+### Миграция с 0.2.1
+
+#### Использование интерфейсов
+
+**Было (0.2.1):**
+```go
+var postsAPI types.PostsAPI = client.Posts
+```
+
+**Стало (0.2.2):**
+```go
+// Используйте конкретные типы напрямую
+var postsService *posts.Service = &client.Posts
+// Или просто используйте client.Posts без присваивания
+```
+
+**Примечание:** Если вы не использовали интерфейсные типы из `types/interfaces.go` напрямую в своём коде, миграция не требуется. Все публичные методы API остались без изменений.
+
+---
+
 ## [0.2.1] - 2026-04-19
 
 ### Добавлено
