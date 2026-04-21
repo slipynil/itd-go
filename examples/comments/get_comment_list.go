@@ -29,7 +29,7 @@ func main() {
 	}
 
 	feed := client.Posts.NewFeed(ctx, types.FeedTabPopular, 1)
-	posts, err := feed.Next()
+	posts, err := feed.Next(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -42,7 +42,7 @@ func main() {
 	iterator := client.Comments.NewCommentList(ctx, firstPost.ID, 1)
 
 	for iterator.HasMore() {
-		comments, err := iterator.Next()
+		comments, err := iterator.Next(ctx)
 		if err != nil {
 			log.Fatal(err)
 		}

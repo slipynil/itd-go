@@ -28,34 +28,17 @@ func New(t *transport.Client) *Service {
 //   - limit: количество комментариев на страницу (рекомендуется 10-20)
 //
 // Возвращает CommentIterator для постраничной загрузки комментариев.
-func (s *Service) NewCommentList(ctx context.Context, postID string, limit int) types.CommentIterator {
-	return commentListIterator(s, ctx, postID, limit)
-}
-
-// getCommentList получает сырую json стурктуру с комментариями и информацией о пагинации.
-func (s *Service) getCommentList(ctx context.Context, postID, cursor string, limit int) (*commentsResponse, error) {
-	path := fmt.Sprintf("/api/posts/%s/comments?limit=%d&sort=popular", postID, limit)
-
-	req, err := s.transport.NewRequest(ctx, "GET", path, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := s.transport.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	var result commentsResponse
-	if err := json.UnmarshalRead(resp.Body, &result, transport.DataOptions); err != nil {
-		return nil, err
-	}
-
-	return &result, nil
+func (s *Service) NewCommentList(ctx context.Context, postID string, limit int) CommentIterator {
+	return commentListIterator(ctx, s, postID, limit)
 }
 
 // ListReplies получает список ответов на комментарий.
+// Параметры:
+//   - ctx: контекст для управления временем жизни запроса
+//   - commentID: идентификатор комментария
+//   - limit: количество ответов на страницу
+//
+// Возвращает массив ответов или ошибку при проблемах с сетью/API.
 func (s *Service) ListReplies(ctx context.Context, commentID string, limit int) ([]*types.Comment, error) {
 	result, err := s.getReplyList(ctx, commentID, limit)
 	if err != nil {
@@ -191,6 +174,11 @@ func (s *Service) CreateReply(
 }
 
 // Delete удаляет комментарий по его ID.
+// Параметры:
+//   - ctx: контекст для управления временем жизни запроса
+//   - commentID: идентификатор комментария для удаления
+//
+// Возвращает ошибку при проблемах с сетью/API или если комментарий не найден.
 func (s *Service) Delete(ctx context.Context, commentID string) error {
 	path := fmt.Sprintf("/api/comments/%s", commentID)
 
@@ -209,6 +197,11 @@ func (s *Service) Delete(ctx context.Context, commentID string) error {
 }
 
 // Like ставит лайк на комментарий.
+// Параметры:
+//   - ctx: контекст для управления временем жизни запроса
+//   - commentID: идентификатор комментария
+//
+// Возвращает ошибку при проблемах с сетью/API.
 func (s *Service) Like(ctx context.Context, commentID string) error {
 	path := fmt.Sprintf("/api/comments/%s/like", commentID)
 
@@ -227,6 +220,11 @@ func (s *Service) Like(ctx context.Context, commentID string) error {
 }
 
 // Unlike убирает лайк с комментария.
+// Параметры:
+//   - ctx: контекст для управления временем жизни запроса
+//   - commentID: идентификатор комментария
+//
+// Возвращает ошибку при проблемах с сетью/API.
 func (s *Service) Unlike(ctx context.Context, commentID string) error {
 	path := fmt.Sprintf("/api/comments/%s/like", commentID)
 
@@ -245,6 +243,12 @@ func (s *Service) Unlike(ctx context.Context, commentID string) error {
 }
 
 // Update обновляет содержимое комментария.
+// Параметры:
+//   - ctx: контекст для управления временем жизни запроса
+//   - commentID: идентификатор комментария
+//   - content: новое текстовое содержимое
+//
+// Возвращает обновлённый комментарий или ошибку при проблемах с сетью/API.
 func (s *Service) Update(ctx context.Context, commentID string, content string) (*types.CommentUpdate, error) {
 	path := fmt.Sprintf("/api/comments/%s", commentID)
 

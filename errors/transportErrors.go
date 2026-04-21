@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-
-	"github.com/slipynil/itd-go/internal/dto"
 )
 
 // APIError представляет ошибку, возвращённую ITD API.
@@ -39,7 +37,7 @@ func CheckResponse(resp *http.Response) error {
 	}
 
 	// Пробуем формат 1: {"error": {"code": "...", "message": "..."}}
-	var respErr dto.ResponseError
+	var respErr ResponseError
 	if err := json.Unmarshal(bodyBytes, &respErr); err == nil && respErr.Error.Code != "" {
 		return &APIError{
 			Code:       respErr.Error.Code,
@@ -49,7 +47,7 @@ func CheckResponse(resp *http.Response) error {
 	}
 
 	// Пробуем формат 2: {"message": "...", "detail": "..."}
-	var valErr dto.ValidationError
+	var valErr ValidationError
 	if err := json.Unmarshal(bodyBytes, &valErr); err == nil && valErr.Message != "" {
 		return &APIError{
 			Code:       "validation_error",

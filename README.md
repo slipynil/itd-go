@@ -5,7 +5,7 @@
 
 **Неофициальный Go SDK для работы с API социальной сети** [итд.com](https://итд.com)
 
-**Версия:** 0.2.2
+**Версия:** 0.3.0
 
 Made with ❤️ by [@Slipynil](https://github.com/slipynil)
 
@@ -194,8 +194,7 @@ itd-go/
 ├── client.go           — публичная точка входа
 ├── config.go           — публичная конфигурация
 │
-├── types/              — публичные интерфейсы и типы данных
-│   ├── interfaces.go   — API интерфейсы (PostsAPI, UserAPI, CommentsAPI)
+├── types/              — публичные типы данных
 │   ├── post.go         — структуры постов
 │   ├── user.go         — структуры пользователей
 │   └── comment.go      — структуры комментариев
@@ -208,8 +207,6 @@ itd-go/
         └── posts/
             ├── posts.go        — публичные методы API
             ├── iterator.go     — generic iterator для пагинации
-            ├── feediterator.go — фабрики итераторов
-            ├── getpostid.go    — внутренние методы запросов
             └── dto.go          — внутренние структуры ответов
 ```
 

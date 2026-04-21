@@ -6,9 +6,9 @@ import (
 	"io"
 	"os"
 
-	"github.com/slipynil/itd-go/internal/api/comments"
-	"github.com/slipynil/itd-go/internal/api/posts"
-	"github.com/slipynil/itd-go/internal/api/user"
+	"github.com/slipynil/itd-go/api/comments"
+	"github.com/slipynil/itd-go/api/posts"
+	"github.com/slipynil/itd-go/api/user"
 	"github.com/slipynil/itd-go/internal/root"
 )
 
@@ -19,7 +19,7 @@ const ITD_DOMAIN string = "xn--d1ah4a.com"
 const BASE_URL string = "https://" + ITD_DOMAIN
 
 // SDK_VERSION - текущая версия ITD Go SDK.
-const SDK_VERSION string = "0.2.2"
+const SDK_VERSION string = "0.3.0"
 
 // Client - главный клиент ITD SDK для взаимодействия с API.
 // Предоставляет доступ к различным группам API методов.

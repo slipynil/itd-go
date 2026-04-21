@@ -41,7 +41,7 @@ func main() {
 			break
 		}
 
-		posts, err := feed.Next()
+		posts, err := feed.Next(ctx)
 		if err != nil {
 			log.Fatal(err)
 		}

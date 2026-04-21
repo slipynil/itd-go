@@ -42,7 +42,7 @@ func main() {
 
 	// Итерируемся по всем страницам
 	for iterator.HasMore() {
-		posts, err := iterator.Next()
+		posts, err := iterator.Next(ctx)
 		if err != nil {
 			log.Fatalf("Ошибка получения постов: %v", err)
 		}

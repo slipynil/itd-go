@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/slipynil/itd-go/internal/api/comments"
-	"github.com/slipynil/itd-go/internal/api/posts"
-	"github.com/slipynil/itd-go/internal/api/user"
+	"github.com/slipynil/itd-go/api/comments"
+	"github.com/slipynil/itd-go/api/posts"
+	"github.com/slipynil/itd-go/api/user"
 	"github.com/slipynil/itd-go/internal/auth"
 	"github.com/slipynil/itd-go/internal/transport"
 )

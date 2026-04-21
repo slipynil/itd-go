@@ -32,7 +32,7 @@ func main() {
 	commentIterator := client.Comments.NewCommentList(ctx, postID, 100)
 
 	for commentIterator.HasMore() {
-		comments, err := commentIterator.Next()
+		comments, err := commentIterator.Next(ctx)
 		if err != nil {
 			log.Fatal(err)
 		}

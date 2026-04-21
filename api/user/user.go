@@ -21,6 +21,10 @@ func New(t *transport.Client) *Service {
 }
 
 // Me получает информацию о текущем аутентифицированном пользователе.
+// Параметры:
+//   - ctx: контекст для управления временем жизни запроса
+//
+// Возвращает информацию о текущем пользователе или ошибку при проблемах с аутентификацией.
 func (s *Service) Me(ctx context.Context) (*types.Me, error) {
 	req, err := s.transport.NewRequest(ctx, "GET", "/api/users/me", nil)
 	if err != nil {
@@ -43,6 +47,11 @@ func (s *Service) Me(ctx context.Context) (*types.Me, error) {
 }
 
 // Get получает информацию о пользователе по его username.
+// Параметры:
+//   - ctx: контекст для управления временем жизни запроса
+//   - username: имя пользователя (без @)
+//
+// Возвращает полную информацию о пользователе или ошибку при проблемах с сетью/API.
 func (s *Service) Get(ctx context.Context, username string) (*types.User, error) {
 	path := fmt.Sprintf("/api/users/%s", username)
 	req, err := s.transport.NewRequest(ctx, "GET", path, nil)
@@ -66,6 +75,11 @@ func (s *Service) Get(ctx context.Context, username string) (*types.User, error)
 }
 
 // Follow подписывается на пользователя.
+// Параметры:
+//   - ctx: контекст для управления временем жизни запроса
+//   - username: имя пользователя для подписки
+//
+// Возвращает ошибку при проблемах с сетью/API или если пользователь не найден.
 func (s *Service) Follow(ctx context.Context, username string) error {
 	path := fmt.Sprintf("/api/users/%s/follow", username)
 	req, err := s.transport.NewRequest(ctx, "POST", path, nil)
@@ -83,6 +97,11 @@ func (s *Service) Follow(ctx context.Context, username string) error {
 }
 
 // Unfollow отписывается от пользователя.
+// Параметры:
+//   - ctx: контекст для управления временем жизни запроса
+//   - username: имя пользователя для отписки
+//
+// Возвращает ошибку при проблемах с сетью/API или если пользователь не найден.
 func (s *Service) Unfollow(ctx context.Context, username string) error {
 	path := fmt.Sprintf("/api/users/%s/follow", username)
 	req, err := s.transport.NewRequest(ctx, "DELETE", path, nil)
@@ -100,6 +119,11 @@ func (s *Service) Unfollow(ctx context.Context, username string) error {
 }
 
 // UpdateProfile обновляет профиль текущего пользователя.
+// Параметры:
+//   - ctx: контекст для управления временем жизни запроса
+//   - config: структура с полями для обновления (пустые поля не изменяются)
+//
+// Возвращает обновлённую информацию о пользователе или ошибку при проблемах с сетью/API.
 func (s *Service) UpdateProfile(ctx context.Context, config types.UpdateProfile) (*types.UpdateProfileResponse, error) {
 
 	payload := UpdateProfile{
@@ -136,7 +160,16 @@ func (s *Service) UpdateProfile(ctx context.Context, config types.UpdateProfile)
 	return &result, nil
 }
 
-// GetFollowers реализует UserAPI.GetFollowers.
+// GetFollowers возвращает список подписчиков пользователя.
+// Параметры:
+//   - ctx: контекст для управления временем жизни запроса
+//   - username: идентификатор пользователя или юзернейм пользователя
+//   - limit: максимальное количество подписчиков в ответе
+//
+// Возвращает срез UserCompact с данными подписчиков.
+//
+// Примечание: в настоящее время API возвращает не более 20 подписчиков
+// независимо от переданного limit.
 func (s *Service) GetFollowers(ctx context.Context, username string, limit int) ([]types.UserCompact, error) {
 	result, err := s.getFollowers(ctx, username, limit, 1)
 	if err != nil {
@@ -145,7 +178,16 @@ func (s *Service) GetFollowers(ctx context.Context, username string, limit int) 
 	return result.Users, nil
 }
 
-// GetFollowing реализует UserAPI.GetFollowing.
+// GetFollowing возвращает список подписок пользователя.
+// Параметры:
+//   - ctx: контекст для управления временем жизни запроса
+//   - username: идентификатор пользователя или юзернейм пользователя
+//   - limit: максимальное количество подписок в ответе
+//
+// Возвращает срез UserCompact с данными подписок.
+//
+// Примечание: в настоящее время API возвращает не более 20 подписок
+// независимо от переданного limit.
 func (s *Service) GetFollowing(ctx context.Context, username string, limit int) ([]types.UserCompact, error) {
 	result, err := s.getFollowing(ctx, username, limit, 1)
 	if err != nil {

@@ -21,17 +21,34 @@ func New(t *transport.Client) *Service {
 	return &Service{transport: t}
 }
 
-// NewFeed возвращает итератор для получения постов.
-func (s *Service) NewFeed(ctx context.Context, tab types.FeedTab, limit int) types.FeedIterator {
-	return newFeedIterator(s, ctx, tab, limit)
+// NewFeed создаёт итератор для получения ленты постов.
+// Параметры:
+//   - ctx: контекст для управления временем жизни запроса
+//   - tab: тип сортировки ("popular", "clan", "following")
+//   - limit: количество постов на страницу (рекомендуется 10-50)
+//
+// Возвращает FeedIterator для постраничной загрузки постов.
+func (s *Service) NewFeed(ctx context.Context, tab types.FeedTab, limit int) FeedIterator {
+	return newFeedIterator(ctx, s, tab, limit)
 }
 
-// NewUserPosts возвращает итератор для получения постов пользователя.
-func (s *Service) NewUserPosts(ctx context.Context, username string, limit int) types.FeedIterator {
-	return newUserPostsIterator(s, ctx, username, limit)
+// NewUserPosts создаёт итератор для получения постов пользователя.
+// Параметры:
+//   - ctx: контекст для управления временем жизни запроса
+//   - username: имя пользователя (без @)
+//   - limit: количество постов на страницу (рекомендуется 10-50)
+//
+// Возвращает FeedIterator для постраничной загрузки постов пользователя.
+func (s *Service) NewUserPosts(ctx context.Context, username string, limit int) FeedIterator {
+	return newUserPostsIterator(ctx, s, username, limit)
 }
 
 // Get получает пост по его ID.
+// Параметры:
+//   - ctx: контекст для управления временем жизни запроса
+//   - postID: уникальный идентификатор поста
+//
+// Возвращает полную информацию о посте или ошибку при проблемах с сетью/API.
 func (s *Service) Get(ctx context.Context, postID string) (*types.Post, error) {
 	path := fmt.Sprintf("/api/posts/%s", postID)
 	req, err := s.transport.NewRequest(ctx, "GET", path, nil)
@@ -58,6 +75,12 @@ func (s *Service) Get(ctx context.Context, postID string) (*types.Post, error) {
 }
 
 // Create создаёт новый пост.
+// Параметры:
+//   - ctx: контекст для управления временем жизни запроса
+//   - content: текстовое содержимое поста
+//   - filePaths: пути к файлам для загрузки и прикрепления к посту
+//
+// Возвращает созданный пост или ошибку при проблемах с сетью/API.
 func (s *Service) Create(ctx context.Context, content string, filePaths ...string) (*types.Post, error) {
 	if strings.TrimSpace(content) == "" && len(filePaths) == 0 {
 		return nil, fmt.Errorf("content or files required")
@@ -143,6 +166,11 @@ func (s *Service) CreateWithPoll(ctx context.Context, content string, poll *type
 }
 
 // Delete удаляет пост по его ID.
+// Параметры:
+//   - ctx: контекст для управления временем жизни запроса
+//   - postID: уникальный идентификатор поста для удаления
+//
+// Возвращает ошибку при проблемах с сетью/API или если пост не найден.
 func (s *Service) Delete(ctx context.Context, postID string) error {
 	path := fmt.Sprintf("/api/posts/%s", postID)
 	req, err := s.transport.NewRequest(ctx, "DELETE", path, nil)
@@ -160,6 +188,11 @@ func (s *Service) Delete(ctx context.Context, postID string) error {
 }
 
 // Like ставит лайк на пост.
+// Параметры:
+//   - ctx: контекст для управления временем жизни запроса
+//   - postID: уникальный идентификатор поста
+//
+// Возвращает обновлённое количество лайков или ошибку при проблемах с сетью/API.
 func (s *Service) Like(ctx context.Context, postID string) (*types.LikesCountResponse, error) {
 	path := fmt.Sprintf("/api/posts/%s/like", postID)
 	req, err := s.transport.NewRequest(ctx, "POST", path, nil)
@@ -184,6 +217,11 @@ func (s *Service) Like(ctx context.Context, postID string) (*types.LikesCountRes
 }
 
 // Unlike убирает лайк с поста.
+// Параметры:
+//   - ctx: контекст для управления временем жизни запроса
+//   - postID: уникальный идентификатор поста
+//
+// Возвращает обновлённое количество лайков или ошибку при проблемах с сетью/API.
 func (s *Service) Unlike(ctx context.Context, postID string) (*types.LikesCountResponse, error) {
 	path := fmt.Sprintf("/api/posts/%s/like", postID)
 	req, err := s.transport.NewRequest(ctx, "DELETE", path, nil)
@@ -208,6 +246,12 @@ func (s *Service) Unlike(ctx context.Context, postID string) (*types.LikesCountR
 }
 
 // Repost создаёт репост существующего поста.
+// Параметры:
+//   - ctx: контекст для управления временем жизни запроса
+//   - postID: уникальный идентификатор поста для репоста
+//   - content: опциональный комментарий к репосту (может быть пустым)
+//
+// Возвращает созданный репост или ошибку при проблемах с сетью/API.
 func (s *Service) Repost(ctx context.Context, postID string, content string) (*types.Post, error) {
 	path := fmt.Sprintf("/api/posts/%s/repost", postID)
 
@@ -237,6 +281,12 @@ func (s *Service) Repost(ctx context.Context, postID string, content string) (*t
 }
 
 // Vote голосует в опросе, прикреплённом к посту.
+// Параметры:
+//   - ctx: контекст для управления временем жизни запроса
+//   - postID: уникальный идентификатор поста с опросом
+//   - optionIDs: массив ID вариантов ответа для голосования
+//
+// Возвращает обновлённый опрос с результатами или ошибку при проблемах с сетью/API.
 func (s *Service) Vote(ctx context.Context, postID string, optionIDs ...string) (*types.Poll, error) {
 	path := fmt.Sprintf("/api/posts/%s/poll/vote", postID)
 
@@ -268,6 +318,11 @@ func (s *Service) Vote(ctx context.Context, postID string, optionIDs ...string) 
 }
 
 // View отмечает пост как просмотренный.
+// Параметры:
+//   - ctx: контекст для управления временем жизни запроса
+//   - postID: уникальный идентификатор поста
+//
+// Возвращает результат операции или ошибку при проблемах с сетью/API.
 func (s *Service) View(ctx context.Context, postID string) (*types.PostViewResponse, error) {
 	path := fmt.Sprintf("/api/posts/%s/view", postID)
 

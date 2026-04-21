@@ -1,4 +1,4 @@
-package dto
+package auth
 
 // AuthResponse представляет ответ от /api/v1/auth/refresh.
 // Возвращает access token для аутентификации запросов.
