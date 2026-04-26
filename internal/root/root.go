@@ -7,6 +7,7 @@ import (
 	"github.com/slipynil/itd-go/api/comments"
 	"github.com/slipynil/itd-go/api/posts"
 	"github.com/slipynil/itd-go/api/user"
+	"github.com/slipynil/itd-go/errors"
 	"github.com/slipynil/itd-go/internal/auth"
 	"github.com/slipynil/itd-go/internal/transport"
 )
@@ -29,12 +30,12 @@ type Client struct {
 func New(ctx context.Context, cfg Config) (*Client, error) {
 	// Проверка refresh token
 	if cfg.RefreshToken == "" {
-		return nil, fmt.Errorf("поле refreshToken пустое")
+		return nil, errors.ErrEmptyRefreshToken
 	}
 
 	httpClient, err := CreateHttpClient(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("ошибка в создании http client: %w", err)
+		return nil, fmt.Errorf("failed to create http client: %w", err)
 	}
 
 	// Создаем auth провайдер
@@ -44,12 +45,12 @@ func New(ctx context.Context, cfg Config) (*Client, error) {
 	}
 	authClient, err := auth.New(authCfg)
 	if err != nil {
-		return nil, fmt.Errorf("ошибка в создании auth provider: %w", err)
+		return nil, fmt.Errorf("failed to create auth provider: %w", err)
 	}
 
 	// Выполняем начальную аутентификацию
 	if _, err := authClient.GetAccessToken(ctx); err != nil {
-		return nil, fmt.Errorf("ошибка в аутентификации: %w", err)
+		return nil, fmt.Errorf("authentication failed: %w", err)
 	}
 
 	// Создаем transport клиент

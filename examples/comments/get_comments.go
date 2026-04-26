@@ -7,34 +7,35 @@ import (
 	"log"
 	"os"
 
-	"github.com/joho/godotenv"
+	_ "github.com/joho/godotenv/autoload"
 	"github.com/k0kubun/pp"
 	itdgo "github.com/slipynil/itd-go"
 )
 
 func main() {
-
-	if err := godotenv.Load(); err != nil {
-		log.Fatal(err)
-	}
-
-	refreshToken := os.Getenv("REFRESH_TOKEN")
-	userAgent := os.Getenv("USER_AGENT")
-
-	cfg := itdgo.Config{
-		RefreshToken: refreshToken,
-		UserAgent:    userAgent,
-	}
 	ctx := context.Background()
-
+	userAgent := os.Getenv("USER_AGENT")
+	token := os.Getenv("REFRESH_TOKEN")
+	cfg := itdgo.Config{
+		UserAgent:    userAgent,
+		RefreshToken: token,
+	}
 	client, err := itdgo.New(ctx, cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	postID := "a7b2512f-7ee7-4d7f-8224-8d25e94bf0ed"
-	post, err := client.Posts.Get(ctx, postID)
-	if err != nil {
-		log.Fatal(err)
+	iter := client.Comments.NewCommentList(ctx, postID, 10)
+
+	if iter.HasMore() {
+		comments, err := iter.Next(ctx)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		for _, comment := range comments {
+			pp.Println(comment)
+		}
 	}
-	pp.Println(post)
 }

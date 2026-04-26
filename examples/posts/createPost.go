@@ -1,3 +1,5 @@
+//go:build ignore
+
 package main
 
 import (
@@ -5,35 +7,30 @@ import (
 	"log"
 	"os"
 
-	"github.com/joho/godotenv"
+	_ "github.com/joho/godotenv/autoload"
 	"github.com/k0kubun/pp"
 	itdgo "github.com/slipynil/itd-go"
 )
 
 func main() {
-
-	if err := godotenv.Load(); err != nil {
-		log.Fatal(err)
-	}
-
-	refreshToken := os.Getenv("REFRESH_TOKEN")
-	userAgent := os.Getenv("USER_AGENT")
-
-	cfg := itdgo.Config{
-		RefreshToken: refreshToken,
-		UserAgent:    userAgent,
-	}
 	ctx := context.Background()
-
+	userAgent := os.Getenv("USER_AGENT")
+	token := os.Getenv("REFRESH_TOKEN")
+	cfg := itdgo.Config{
+		UserAgent:    userAgent,
+		RefreshToken: token,
+	}
 	client, err := itdgo.New(ctx, cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// Создаём простой текстовый пост
-	content := "Привет, ITD! 👋"
+	filePaths := []string{
+		"/home/user/Pictures/cat.png",
+		"/home/user/Pictures/cat.webp",
+	}
 
-	post, err := client.Posts.Create(ctx, content)
+	post, err := client.Posts.Create(ctx, "cat meme", filePaths...)
 	if err != nil {
 		log.Fatal(err)
 	}

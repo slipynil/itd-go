@@ -3,10 +3,13 @@ package posts
 import (
 	"context"
 	"fmt"
+	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/go-json-experiment/json"
 
+	"github.com/slipynil/itd-go/errors"
 	"github.com/slipynil/itd-go/internal/transport"
 	"github.com/slipynil/itd-go/types"
 )
@@ -81,9 +84,12 @@ func (s *Service) Get(ctx context.Context, postID string) (*types.Post, error) {
 //   - filePaths: пути к файлам для загрузки и прикрепления к посту
 //
 // Возвращает созданный пост или ошибку при проблемах с сетью/API.
-func (s *Service) Create(ctx context.Context, content string, filePaths ...string) (*types.Post, error) {
+func (s *Service) Create(ctx context.Context, content string, filePaths ...string) (*types.CreatedPost, error) {
 	if strings.TrimSpace(content) == "" && len(filePaths) == 0 {
-		return nil, fmt.Errorf("content or files required")
+		return nil, errors.ErrEmptyContent
+	}
+	if err := validatePostFiles(filePaths); err != nil {
+		return nil, err
 	}
 
 	attachmentIDs, err := s.transport.UploadFiles(ctx, filePaths...)
@@ -107,7 +113,7 @@ func (s *Service) Create(ctx context.Context, content string, filePaths ...strin
 	}
 	defer resp.Body.Close()
 
-	var result types.Post
+	var result types.CreatedPost
 
 	err = json.UnmarshalRead(resp.Body, &result, transport.DataOptions)
 	if err != nil {
@@ -125,12 +131,20 @@ func (s *Service) Create(ctx context.Context, content string, filePaths ...strin
 //   - filePaths: пути к файлам для загрузки и прикрепления к посту
 //
 // Возвращает созданный пост с опросом или ошибку при проблемах с сетью/API.
-func (s *Service) CreateWithPoll(ctx context.Context, content string, poll *types.PollRequest, filePaths ...string) (*types.Post, error) {
+func (s *Service) CreateWithPoll(
+	ctx context.Context,
+	content string,
+	poll *types.PollRequest,
+	filePaths ...string,
+) (*types.CreatedPostWithPoll, error) {
 	if poll == nil {
-		return nil, fmt.Errorf("poll cannot be nil")
+		return nil, errors.ErrNilPoll
 	}
 	if len(poll.Options) < 2 {
-		return nil, fmt.Errorf("poll must have at least 2 options")
+		return nil, errors.ErrInsufficientPollOptions
+	}
+	if err := validatePostFiles(filePaths); err != nil {
+		return nil, err
 	}
 
 	attachmentIDs, err := s.transport.UploadFiles(ctx, filePaths...)
@@ -155,7 +169,7 @@ func (s *Service) CreateWithPoll(ctx context.Context, content string, poll *type
 	}
 	defer resp.Body.Close()
 
-	var result types.Post
+	var result types.CreatedPostWithPoll
 
 	err = json.UnmarshalRead(resp.Body, &result, transport.DataOptions)
 	if err != nil {
@@ -252,7 +266,7 @@ func (s *Service) Unlike(ctx context.Context, postID string) (*types.LikesCountR
 //   - content: опциональный комментарий к репосту (может быть пустым)
 //
 // Возвращает созданный репост или ошибку при проблемах с сетью/API.
-func (s *Service) Repost(ctx context.Context, postID string, content string) (*types.Post, error) {
+func (s *Service) Repost(ctx context.Context, postID string, content string) (*types.CreatedPostWithRepost, error) {
 	path := fmt.Sprintf("/api/posts/%s/repost", postID)
 
 	payload := repostRequest{
@@ -270,7 +284,7 @@ func (s *Service) Repost(ctx context.Context, postID string, content string) (*t
 	}
 	defer resp.Body.Close()
 
-	var result types.Post
+	var result types.CreatedPostWithRepost
 
 	err = json.UnmarshalRead(resp.Body, &result, transport.DataOptions)
 	if err != nil {
@@ -349,4 +363,25 @@ func (s *Service) View(ctx context.Context, postID string) (*types.PostViewRespo
 	}
 
 	return &result, nil
+}
+
+func validatePostFiles(paths []string) error {
+	if len(paths) == 0 {
+		return nil
+	}
+	if len(paths) > 10 {
+		return fmt.Errorf("%w: %d, max: 10", errors.TooManyFiles, len(paths))
+	}
+
+	allowed := []string{".png", ".webp"}
+	for _, path := range paths {
+		ext := strings.ToLower(filepath.Ext(path))
+		if ext == "" {
+			return fmt.Errorf("%w: %s", errors.NoFileExtension, path)
+		}
+		if !slices.Contains(allowed, ext) {
+			return fmt.Errorf("%w: %s, supported: %v", errors.InvalidFileExtension, ext, allowed)
+		}
+	}
+	return nil
 }

@@ -1,3 +1,5 @@
+//go:build ignore
+
 package main
 
 import (
@@ -30,7 +32,7 @@ func main() {
 	postID := "a7b2512f-7ee7-4d7f-8224-8d25e94bf0ed"
 
 	// Создаём простой текстовый комментарий
-	filePath := "/home/user/Downloads/music/fakemink_night_blooming_Jasmine.mp3"
+	filePath := "/home/user/Pictures/cat.gif"
 	comment, err := client.Comments.CreateComment(ctx, postID, "Fakemink Night, Blooming Jasmine", filePath)
 	if err != nil {
 		log.Fatal(err)
@@ -38,11 +40,4 @@ func main() {
 
 	pp.Println("Комментарий создан:")
 	pp.Println(comment)
-
-	// Для создания комментария с файлами используйте:
-	// comment, err := client.Comments.CreateComment(ctx, postID, "Комментарий с фото", "/path/to/image.jpg")
-	// if err != nil {
-	//     log.Fatal(err)
-	// }
-	// pp.Println(comment)
 }

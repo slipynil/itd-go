@@ -2,6 +2,46 @@ package types
 
 import "time"
 
+// CreatedPostBase содержит общие поля для всех типов созданных постов.
+// Используется как встраиваемая структура в CreatedPost, CreatedPostWithPoll и CreatedPostWithRepost.
+type CreatedPostBase struct {
+	// ID - уникальный идентификатор поста
+	ID string `json:"id"`
+
+	// Content - текстовое содержимое поста (может содержать эмодзи)
+	Content string `json:"content"`
+
+	// CreatedAt - дата и время создания поста
+	CreatedAt time.Time `json:"createdAt"`
+
+	// Attachments - массив вложений (изображения, видео, файлы)
+	Attachments []Attachment `json:"attachments"`
+}
+
+// CreatedPost представляет созданный пост в социальной сети ITD.
+// Содержит id, текстовый контент и информацию о времени создания.
+type CreatedPost struct {
+	CreatedPostBase
+}
+
+// CreatedPostWithPoll представляет созданный пост с опросом в социальной сети ITD.
+// Содержит id, текстовый контент, информацию о времени создания и опрос.
+type CreatedPostWithPoll struct {
+	CreatedPostBase
+
+	// Poll - опрос, прикреплённый к посту
+	Poll *Poll `json:"poll"`
+}
+
+// CreatedPostWithRepost представляет созданный пост с репостом в социальной сети ITD.
+// Содержит оригинальный пост
+type CreatedPostWithRepost struct {
+	CreatedPostBase
+
+	// OriginalPost - оригинальный пост, если текущий является репостом (nil, если не репост)
+	OriginalPost *Post `json:"originalPost"`
+}
+
 // Post представляет пост в социальной сети ITD.
 // Содержит текстовый контент, метаданные, информацию об авторе и статистику взаимодействий.
 type Post struct {

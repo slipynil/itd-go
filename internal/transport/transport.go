@@ -54,7 +54,7 @@ func (c *Client) NewRequestMultipart(
 	url := c.baseURL + path
 	req, err := http.NewRequestWithContext(ctx, method, url, body)
 	if err != nil {
-		return nil, fmt.Errorf("ошибка при создании запроса: %w", err)
+		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 	req.Header.Set("Content-Type", contentType)
 	return req, nil
@@ -65,7 +65,7 @@ func (c *Client) NewRequest(ctx context.Context, method, path string, body any) 
 	if body != nil {
 		data, err := json.Marshal(body)
 		if err != nil {
-			return nil, fmt.Errorf("ошибка при сериализации тела запроса: %w", err)
+			return nil, fmt.Errorf("failed to serialize request body: %w", err)
 		}
 		bodyReader = bytes.NewReader(data)
 	}
@@ -74,7 +74,7 @@ func (c *Client) NewRequest(ctx context.Context, method, path string, body any) 
 
 	req, err := http.NewRequestWithContext(ctx, method, url, bodyReader)
 	if err != nil {
-		return nil, fmt.Errorf("ошибка при создании запроса: %w", err)
+		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")

@@ -19,7 +19,7 @@ const ITD_DOMAIN string = "xn--d1ah4a.com"
 const BASE_URL string = "https://" + ITD_DOMAIN
 
 // SDK_VERSION - текущая версия ITD Go SDK.
-const SDK_VERSION string = "0.3.0"
+const SDK_VERSION string = "0.3.1"
 
 // Client - главный клиент ITD SDK для взаимодействия с API.
 // Предоставляет доступ к различным группам API методов.
@@ -56,7 +56,7 @@ func New(ctx context.Context, cfg Config) (*Client, error) {
 	}
 	root, err := root.New(ctx, apiCfg)
 	if err != nil {
-		return nil, fmt.Errorf("ошибка в создании api client: %w", err)
+		return nil, fmt.Errorf("failed to create api client: %w", err)
 	}
 
 	return &Client{

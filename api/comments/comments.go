@@ -3,10 +3,13 @@ package comments
 import (
 	"context"
 	"fmt"
+	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/go-json-experiment/json"
 
+	"github.com/slipynil/itd-go/errors"
 	"github.com/slipynil/itd-go/internal/transport"
 	"github.com/slipynil/itd-go/types"
 )
@@ -78,12 +81,15 @@ func (s *Service) getReplyList(ctx context.Context, commentID string, limit int)
 //   - filePaths: пути к файлам для загрузки и прикрепления к комментарию
 //
 // Возвращает созданный комментарий или ошибку при проблемах с сетью/API.
-func (s *Service) CreateComment(ctx context.Context, postID string, content string, filePaths ...string) (*types.CreateComment, error) {
+func (s *Service) CreateComment(ctx context.Context, postID string, content string, filePaths ...string) (*types.CreatedComment, error) {
 	if postID == "" {
-		return nil, fmt.Errorf("postID cannot be empty")
+		return nil, errors.ErrEmptyPostID
 	}
 	if strings.TrimSpace(content) == "" && len(filePaths) == 0 {
-		return nil, fmt.Errorf("content or files required")
+		return nil, errors.ErrEmptyContent
+	}
+	if err := validateCommentFiles(filePaths); err != nil {
+		return nil, err
 	}
 
 	attachmentIDs, err := s.transport.UploadFiles(ctx, filePaths...)
@@ -108,7 +114,7 @@ func (s *Service) CreateComment(ctx context.Context, postID string, content stri
 	}
 	defer resp.Body.Close()
 
-	var result types.CreateComment
+	var result types.CreatedComment
 	if err := json.UnmarshalRead(resp.Body, &result); err != nil {
 		return nil, err
 	}
@@ -131,15 +137,18 @@ func (s *Service) CreateReply(
 	replyToUserID,
 	content string,
 	filePaths ...string,
-) (*types.CreateComment, error) {
+) (*types.CreatedComment, error) {
 	if parentCommentID == "" {
-		return nil, fmt.Errorf("parentCommentID cannot be empty")
+		return nil, errors.ErrEmptyParentCommentID
 	}
 	if replyToUserID == "" {
-		return nil, fmt.Errorf("replyToUserID cannot be empty")
+		return nil, errors.ErrEmptyReplyToUserID
 	}
 	if strings.TrimSpace(content) == "" && len(filePaths) == 0 {
-		return nil, fmt.Errorf("content or files required")
+		return nil, errors.ErrEmptyContent
+	}
+	if err := validateCommentFiles(filePaths); err != nil {
+		return nil, err
 	}
 
 	attachmentIDs, err := s.transport.UploadFiles(ctx, filePaths...)
@@ -165,7 +174,7 @@ func (s *Service) CreateReply(
 	}
 	defer resp.Body.Close()
 
-	var result types.CreateComment
+	var result types.CreatedComment
 	if err := json.UnmarshalRead(resp.Body, &result); err != nil {
 		return nil, err
 	}
@@ -273,4 +282,25 @@ func (s *Service) Update(ctx context.Context, commentID string, content string) 
 	}
 
 	return &result, nil
+}
+
+func validateCommentFiles(paths []string) error {
+	if len(paths) == 0 {
+		return nil
+	}
+	if len(paths) > 4 {
+		return fmt.Errorf("%w: %d, max: 10", errors.TooManyFiles, len(paths))
+	}
+
+	allowed := []string{".png", ".webp", ".ogg", ".mp3"}
+	for _, path := range paths {
+		ext := strings.ToLower(filepath.Ext(path))
+		if ext == "" {
+			return fmt.Errorf("%w: %s", errors.NoFileExtension, path)
+		}
+		if !slices.Contains(allowed, ext) {
+			return fmt.Errorf("%w: %s, supported: %v", errors.InvalidFileExtension, ext, allowed)
+		}
+	}
+	return nil
 }
