@@ -78,7 +78,7 @@ func (s *Service) getReplyList(ctx context.Context, commentID string, limit int)
 //   - filePaths: пути к файлам для загрузки и прикрепления к комментарию
 //
 // Возвращает созданный комментарий или ошибку при проблемах с сетью/API.
-func (s *Service) CreateComment(ctx context.Context, postID string, content string, filePaths ...string) (*types.CreateComment, error) {
+func (s *Service) CreateComment(ctx context.Context, postID string, content string, filePaths ...string) (*types.CreatedComment, error) {
 	if postID == "" {
 		return nil, fmt.Errorf("postID cannot be empty")
 	}
@@ -108,7 +108,7 @@ func (s *Service) CreateComment(ctx context.Context, postID string, content stri
 	}
 	defer resp.Body.Close()
 
-	var result types.CreateComment
+	var result types.CreatedComment
 	if err := json.UnmarshalRead(resp.Body, &result); err != nil {
 		return nil, err
 	}
@@ -131,7 +131,7 @@ func (s *Service) CreateReply(
 	replyToUserID,
 	content string,
 	filePaths ...string,
-) (*types.CreateComment, error) {
+) (*types.CreatedComment, error) {
 	if parentCommentID == "" {
 		return nil, fmt.Errorf("parentCommentID cannot be empty")
 	}
@@ -165,7 +165,7 @@ func (s *Service) CreateReply(
 	}
 	defer resp.Body.Close()
 
-	var result types.CreateComment
+	var result types.CreatedComment
 	if err := json.UnmarshalRead(resp.Body, &result); err != nil {
 		return nil, err
 	}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 )
 
 // APIError представляет ошибку, возвращённую ITD API.
@@ -20,12 +21,16 @@ type APIError struct {
 	StatusCode int
 }
 
+// Error возвращает строковое представление ошибки API.
+// Реализует интерфейс error.
 func (e *APIError) Error() string {
-	return fmt.Sprintf("код: %s, сообщение: %s, HTTP статус: %d",
+	return fmt.Sprintf("code: %s, message: %s, HTTP status: %d",
 		e.Code, e.Message, e.StatusCode)
 }
 
-// проверяет http статус кода на наличие ошибки и возвращает ее
+// CheckResponse проверяет HTTP статус код ответа на наличие ошибки.
+// Возвращает APIError если статус >= 400, иначе nil.
+// Поддерживает несколько форматов ошибок от ITD API.
 func CheckResponse(resp *http.Response) error {
 	if resp.StatusCode < 400 {
 		return nil
@@ -33,7 +38,7 @@ func CheckResponse(resp *http.Response) error {
 
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return fmt.Errorf("не удалось прочитать тело ответа: %w", err)
+		return fmt.Errorf("cannot read response body: %w", err)
 	}
 
 	// Пробуем формат 1: {"error": {"code": "...", "message": "..."}}
@@ -57,9 +62,16 @@ func CheckResponse(resp *http.Response) error {
 	}
 
 	// Если не удалось распарсить, возвращаем сырое тело
+	contentType := resp.Header.Get("Content-Type")
+	var message string
+	if !strings.Contains(contentType, "application/json") {
+		message = fmt.Sprintf("server error (HTTP %d)", resp.StatusCode)
+	} else {
+		message = string(bodyBytes)
+	}
 	return &APIError{
 		Code:       "unknown_error",
-		Message:    string(bodyBytes),
+		Message:    message,
 		StatusCode: resp.StatusCode,
 	}
 }

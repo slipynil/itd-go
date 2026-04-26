@@ -1,3 +1,5 @@
+//go:build ignore
+
 package main
 
 import (
@@ -38,11 +40,4 @@ func main() {
 
 	pp.Println("Комментарий создан:")
 	pp.Println(comment)
-
-	// Для создания комментария с файлами используйте:
-	// comment, err := client.Comments.CreateComment(ctx, postID, "Комментарий с фото", "/path/to/image.jpg")
-	// if err != nil {
-	//     log.Fatal(err)
-	// }
-	// pp.Println(comment)
 }

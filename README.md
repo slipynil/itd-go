@@ -5,7 +5,7 @@
 
 **Неофициальный Go SDK для работы с API социальной сети** [итд.com](https://итд.com)
 
-**Версия:** 0.3.0
+**Версия:** 0.3.1
 
 Made with ❤️ by [@Slipynil](https://github.com/slipynil)
 

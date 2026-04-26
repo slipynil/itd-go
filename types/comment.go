@@ -36,6 +36,25 @@ type Comment struct {
 	ReplyTo *ReplyTo `json:"replyTo,omitempty"`
 }
 
+// CreatedComment представляет результат создания комментария.
+// Содержит данные о созданном комментарии.
+type CreatedComment struct {
+	// ID - уникальный идентификатор комментария
+	ID string `json:"id"`
+
+	// Content - текстовое содержимое комментария
+	Content string `json:"content"`
+
+	// CreatedAt - время создания комментария
+	CreatedAt time.Time `json:"createdAt"`
+
+	// Attachments - массив вложений (изображения, файлы)
+	Attachments []*CommentAttachment `json:"attachments"`
+
+	// ReplyTo - информация о комментарии, на который отвечает данный комментарий (nil, если это не ответ)
+	ReplyTo *ReplyTo `json:"replyTo,omitempty"`
+}
+
 // CommentUpdate представляет результат обновления комментария.
 type CommentUpdate struct {
 	// ID - уникальный идентификатор комментария
@@ -93,23 +112,4 @@ type ReplyTo struct {
 
 	// DisplayName - отображаемое имя пользователя
 	DisplayName string `json:"displayName"`
-}
-
-// CreateComment представляет результат создания комментария или ответа.
-// Возвращается методами CreateComment и CreateReply.
-type CreateComment struct {
-	// ID - уникальный идентификатор комментария
-	ID string `json:"id"`
-
-	// Content - текстовое содержимое комментария
-	Content string `json:"content"`
-
-	// Author - информация об авторе комментария
-	Author AuthorInfo `json:"author"`
-
-	// CreatedAt - время создания комментария
-	CreatedAt time.Time `json:"createdAt"`
-
-	// Attachments - массив вложений (изображения, файлы)
-	Attachments []*CommentAttachment `json:"attachments"`
 }
