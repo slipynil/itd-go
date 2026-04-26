@@ -36,6 +36,7 @@
   - `CreatedPostWithRepost` - результат создания репоста
   - `CreatedComment` - результат создания комментария
 - **Новый пример**: `examples/comments/get_comments.go` - получение списка комментариев с использованием итератора
+- **Новый пример**: `examples/errors/error_handling.go` - демонстрация всех возможностей обработки ошибок через `errors.Is()` и `errors.As()`
 
 ### Изменено
 
