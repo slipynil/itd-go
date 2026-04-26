@@ -86,7 +86,7 @@ func (s *Service) Get(ctx context.Context, postID string) (*types.Post, error) {
 // Возвращает созданный пост или ошибку при проблемах с сетью/API.
 func (s *Service) Create(ctx context.Context, content string, filePaths ...string) (*types.CreatedPost, error) {
 	if strings.TrimSpace(content) == "" && len(filePaths) == 0 {
-		return nil, fmt.Errorf("content or files required")
+		return nil, errors.ErrEmptyContent
 	}
 	if err := validatePostFiles(filePaths); err != nil {
 		return nil, err
@@ -138,10 +138,10 @@ func (s *Service) CreateWithPoll(
 	filePaths ...string,
 ) (*types.CreatedPostWithPoll, error) {
 	if poll == nil {
-		return nil, fmt.Errorf("poll cannot be nil")
+		return nil, errors.ErrNilPoll
 	}
 	if len(poll.Options) < 2 {
-		return nil, fmt.Errorf("poll must have at least 2 options")
+		return nil, errors.ErrInsufficientPollOptions
 	}
 	if err := validatePostFiles(filePaths); err != nil {
 		return nil, err

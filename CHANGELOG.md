@@ -2,6 +2,117 @@
 
 Все значимые изменения в проекте будут документированы в этом файле.
 
+## [0.3.1] - 2026-04-26
+
+### Добавлено
+
+- **Sentinel errors для валидации входных данных**: теперь можно проверять ошибки через `errors.Is()`
+  - `ErrEmptyContent` - контент и файлы отсутствуют
+  - `ErrEmptyPostID` - пустой ID поста
+  - `ErrEmptyCommentID` - пустой ID комментария
+  - `ErrEmptyUserID` - пустой ID пользователя
+  - `ErrEmptyRefreshToken` - пустой refresh token
+  - `ErrNilPoll` - poll = nil при создании поста с опросом
+  - `ErrInsufficientPollOptions` - в опросе < 2 вариантов
+  - `ErrEmptyReplyToUserID` - пустой ID пользователя при создании ответа
+  - `ErrEmptyParentCommentID` - пустой ID родительского комментария
+- **Sentinel errors для API ошибок**: маппинг HTTP статусов на типизированные ошибки
+  - `ErrUnauthorized` (401) - невалидный/истёкший токен
+  - `ErrNotFound` (404) - ресурс не найден
+  - `ErrForbidden` (403) - недостаточно прав
+  - `ErrRateLimited` (429) - превышен лимит запросов
+  - `ErrServerError` (500+) - внутренняя ошибка сервера
+- **Валидация файлов для комментариев**: методы `CreateComment` и `CreateReply` теперь проверяют формат и количество файлов
+  - Поддерживаемые форматы: `.png`, `.webp`
+  - Максимальное количество файлов: 10
+- **Новые типы ошибок** в пакете `errors/`:
+  - `InvalidFileExtension` - неподдерживаемое расширение файла
+  - `TooManyFiles` - превышено максимальное количество файлов
+  - `NoFileExtension` - файл без расширения
+- **Специализированные типы для результатов создания**:
+  - `CreatedPostBase` - базовая структура с общими полями
+  - `CreatedPost` - результат создания простого поста
+  - `CreatedPostWithPoll` - результат создания поста с опросом
+  - `CreatedPostWithRepost` - результат создания репоста
+  - `CreatedComment` - результат создания комментария
+- **Новый пример**: `examples/comments/get_comments.go` - получение списка комментариев с использованием итератора
+
+### Изменено
+
+- **BREAKING**: возвращаемые типы методов создания изменены на более специфичные:
+  - `Posts.Create()`: `*types.Post` → `*types.CreatedPost`
+  - `Posts.CreateWithPoll()`: `*types.Post` → `*types.CreatedPostWithPoll`
+  - `Posts.Repost()`: `*types.Post` → `*types.CreatedPostWithRepost`
+  - `Comments.CreateComment()`: `*types.CreateComment` → `*types.CreatedComment`
+  - `Comments.CreateReply()`: `*types.CreateComment` → `*types.CreatedComment`
+- **Улучшена обработка ошибок**: `APIError` теперь поддерживает `Unwrap()` для проверки через `errors.Is()`
+- **Реорганизация пакета `errors/`**: разделение на четыре файла для лучшей организации
+  - `errors/API.go` - типы ошибок API и sentinel errors для HTTP статусов
+  - `errors/transport.go` - обработка HTTP ошибок и `CheckResponse()`
+  - `errors/files.go` - ошибки работы с файлами
+  - `errors/validation.go` - sentinel errors для валидации входных данных
+- **Рефакторинг типов Created\***: использование композиции через `CreatedPostBase` для устранения дублирования кода
+- **Улучшена документация**: добавлены godoc комментарии для всех публичных типов, методов и переменных
+- **Примеры**: добавлен `//go:build ignore` во все файлы примеров для корректной работы с `go run`
+- **Упрощена инициализация в примерах**: использование `_ "github.com/joho/godotenv/autoload"` вместо явного вызова `godotenv.Load()`
+
+### Удалено
+
+- Удалён дублирующий пример `examples/posts/createPostWithFiles.go` (функциональность объединена с `createPost.go`)
+- Удалён тип `types.CreateComment` (заменён на `types.CreatedComment`)
+
+### Миграция с 0.3.0
+
+#### Использование новых типов результатов
+
+**Было (0.3.0):**
+```go
+var post *types.Post
+post, err := client.Posts.Create(ctx, "Контент", "/path/to/file.jpg")
+```
+
+**Стало (0.3.1):**
+```go
+var post *types.CreatedPost
+post, err := client.Posts.Create(ctx, "Контент", "/path/to/file.jpg")
+```
+
+**Примечание:** Новые типы содержат только необходимые поля, возвращаемые API при создании. Если вам нужна полная информация о посте, используйте метод `Get()` после создания.
+
+#### Проверка ошибок через errors.Is()
+
+**Новая функциональность (0.3.1):**
+```go
+// Валидация входных данных
+post, err := client.Posts.Get(ctx, "")
+if errors.Is(err, itderrors.ErrEmptyPostID) {
+    log.Println("ID поста не может быть пустым")
+}
+
+// API ошибки
+post, err := client.Posts.Get(ctx, "invalid-id")
+if errors.Is(err, itderrors.ErrNotFound) {
+    log.Println("Пост не найден")
+}
+if errors.Is(err, itderrors.ErrUnauthorized) {
+    log.Println("Токен истёк, нужно обновить")
+}
+
+// Получение деталей API ошибки
+var apiErr *itderrors.APIError
+if errors.As(err, &apiErr) {
+    log.Printf("API error: code=%s, status=%d", apiErr.Code, apiErr.StatusCode)
+}
+
+// Валидация файлов
+post, err := client.Posts.Create(ctx, "Контент", "/path/to/file.mp3")
+if errors.Is(err, itderrors.InvalidFileExtension) {
+    log.Println("Неподдерживаемый формат файла")
+}
+```
+
+---
+
 ## [0.3.0] - 2026-04-21
 
 ### Изменено

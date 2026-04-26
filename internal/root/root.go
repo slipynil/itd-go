@@ -7,6 +7,7 @@ import (
 	"github.com/slipynil/itd-go/api/comments"
 	"github.com/slipynil/itd-go/api/posts"
 	"github.com/slipynil/itd-go/api/user"
+	"github.com/slipynil/itd-go/errors"
 	"github.com/slipynil/itd-go/internal/auth"
 	"github.com/slipynil/itd-go/internal/transport"
 )
@@ -29,7 +30,7 @@ type Client struct {
 func New(ctx context.Context, cfg Config) (*Client, error) {
 	// Проверка refresh token
 	if cfg.RefreshToken == "" {
-		return nil, fmt.Errorf("поле refreshToken пустое")
+		return nil, errors.ErrEmptyRefreshToken
 	}
 
 	httpClient, err := CreateHttpClient(cfg)
