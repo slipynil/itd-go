@@ -17,7 +17,7 @@ func CreateHttpClient(cfg Config) (*http.Client, error) {
 	// Создаем cookie jar для refresh token
 	jar, err := cookiejar.New(nil)
 	if err != nil {
-		return nil, fmt.Errorf("ошибка при создании cookie jar: %w", err)
+		return nil, fmt.Errorf("failed to create cookie jar: %w", err)
 	}
 
 	// Создаем cookie с refresh token
@@ -31,7 +31,7 @@ func CreateHttpClient(cfg Config) (*http.Client, error) {
 	// Добавляем cookie в jar
 	u, err := url.Parse(cfg.Url)
 	if err != nil {
-		return nil, fmt.Errorf("неверный формат baseURL: %w", err)
+		return nil, fmt.Errorf("invalid baseURL format: %w", err)
 	}
 	jar.SetCookies(u, []*http.Cookie{cookie})
 
@@ -48,7 +48,7 @@ func CreateHttpClient(cfg Config) (*http.Client, error) {
 
 	t, err := defaultAuthTransport()
 	if err != nil {
-		return nil, fmt.Errorf("ошибка при создании базового transport: %w", err)
+		return nil, fmt.Errorf("failed to create base transport: %w", err)
 	}
 
 	// Создаем HTTP клиент с cookie jar и базовыми заголовками
@@ -83,7 +83,7 @@ func defaultAuthTransport() (*http.Transport, error) {
 		IdleConnTimeout:       90 * time.Second,
 	}
 	if err := http2.ConfigureTransport(t); err != nil {
-		return nil, fmt.Errorf("ошибка в поддержке HTTP/2.0: %w", err)
+		return nil, fmt.Errorf("failed to configure HTTP/2.0: %w", err)
 	}
 	return t, nil
 }

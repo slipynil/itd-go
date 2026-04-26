@@ -75,23 +75,23 @@ func (r *Client) refreshAccessToken(ctx context.Context) (string, error) {
 	// Формируем URL для refresh endpoint
 	endpoint, err := url.JoinPath("api", "v1", "auth", "refresh")
 	if err != nil {
-		return "", fmt.Errorf("ошибка при формировании endpoint: %w", err)
+		return "", fmt.Errorf("failed to build endpoint: %w", err)
 	}
 
 	refreshURL, err := url.JoinPath(r.BaseURL, endpoint)
 	if err != nil {
-		return "", fmt.Errorf("ошибка при формировании URL: %w", err)
+		return "", fmt.Errorf("failed to build URL: %w", err)
 	}
 
 	// Выполняем POST запрос
 	req, err := http.NewRequestWithContext(ctx, "POST", refreshURL, nil)
 	if err != nil {
-		return "", fmt.Errorf("ошибка при создании запроса: %w", err)
+		return "", fmt.Errorf("failed to create request: %w", err)
 	}
 
 	resp, err := r.HttpClient.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("ошибка при обновлении токена: %w", err)
+		return "", fmt.Errorf("failed to refresh token: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -103,11 +103,11 @@ func (r *Client) refreshAccessToken(ctx context.Context) (string, error) {
 	// Декодируем ответ
 	data := new(AuthResponse)
 	if err := json.NewDecoder(resp.Body).Decode(data); err != nil {
-		return "", fmt.Errorf("ошибка при декодировании ответа: %w", err)
+		return "", fmt.Errorf("failed to decode response: %w", err)
 	}
 
 	if data.AccessToken == "" {
-		return "", fmt.Errorf("получен пустой access token")
+		return "", fmt.Errorf("received empty access token")
 	}
 
 	expiry, err := ParseJWTExpiry(data.AccessToken)
@@ -129,25 +129,25 @@ func (r *Client) fetchUserID(ctx context.Context) error {
 	// Формируем URL для /api/users/me
 	endpoint, err := url.JoinPath("api", "users", "me")
 	if err != nil {
-		return fmt.Errorf("ошибка при формировании endpoint: %w", err)
+		return fmt.Errorf("failed to build endpoint: %w", err)
 	}
 
 	meURL, err := url.JoinPath(r.BaseURL, endpoint)
 	if err != nil {
-		return fmt.Errorf("ошибка при формировании URL: %w", err)
+		return fmt.Errorf("failed to build URL: %w", err)
 	}
 
 	// Создаем запрос с Authorization заголовком
 	req, err := http.NewRequestWithContext(ctx, "GET", meURL, nil)
 	if err != nil {
-		return fmt.Errorf("ошибка при создании запроса: %w", err)
+		return fmt.Errorf("failed to create request: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+r.accessToken)
 
 	// обрабатываем ответ
 	resp, err := r.HttpClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("ошибка при получении информации о пользователе: %w", err)
+		return fmt.Errorf("failed to fetch user info: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -159,11 +159,11 @@ func (r *Client) fetchUserID(ctx context.Context) error {
 	// Декодируем ответ
 	var userData UserIDResponse
 	if err := json.NewDecoder(resp.Body).Decode(&userData); err != nil {
-		return fmt.Errorf("ошибка при декодировании ответа: %w", err)
+		return fmt.Errorf("failed to decode response: %w", err)
 	}
 
 	if userData.ID == "" {
-		return fmt.Errorf("получен пустой user ID")
+		return fmt.Errorf("received empty user ID")
 	}
 
 	r.userID = userData.ID

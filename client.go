@@ -56,7 +56,7 @@ func New(ctx context.Context, cfg Config) (*Client, error) {
 	}
 	root, err := root.New(ctx, apiCfg)
 	if err != nil {
-		return nil, fmt.Errorf("ошибка в создании api client: %w", err)
+		return nil, fmt.Errorf("failed to create api client: %w", err)
 	}
 
 	return &Client{

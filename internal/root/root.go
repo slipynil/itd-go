@@ -35,7 +35,7 @@ func New(ctx context.Context, cfg Config) (*Client, error) {
 
 	httpClient, err := CreateHttpClient(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("ошибка в создании http client: %w", err)
+		return nil, fmt.Errorf("failed to create http client: %w", err)
 	}
 
 	// Создаем auth провайдер
@@ -45,12 +45,12 @@ func New(ctx context.Context, cfg Config) (*Client, error) {
 	}
 	authClient, err := auth.New(authCfg)
 	if err != nil {
-		return nil, fmt.Errorf("ошибка в создании auth provider: %w", err)
+		return nil, fmt.Errorf("failed to create auth provider: %w", err)
 	}
 
 	// Выполняем начальную аутентификацию
 	if _, err := authClient.GetAccessToken(ctx); err != nil {
-		return nil, fmt.Errorf("ошибка в аутентификации: %w", err)
+		return nil, fmt.Errorf("authentication failed: %w", err)
 	}
 
 	// Создаем transport клиент

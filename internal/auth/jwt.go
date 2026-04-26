@@ -12,7 +12,7 @@ import (
 func ParseJWTExpiry(tokenString string) (time.Time, error) {
 	parts := strings.Split(tokenString, ".")
 	if len(parts) != 3 {
-		return time.Time{}, fmt.Errorf("невалидный JWT")
+		return time.Time{}, fmt.Errorf("invalid JWT format")
 	}
 
 	// декодируем payload (вторая часть)
