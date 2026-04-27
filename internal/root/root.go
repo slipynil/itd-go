@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/slipynil/itd-go/api/comments"
+	"github.com/slipynil/itd-go/api/notifications"
 	"github.com/slipynil/itd-go/api/posts"
 	"github.com/slipynil/itd-go/api/user"
 	"github.com/slipynil/itd-go/errors"
@@ -23,6 +24,9 @@ type Client struct {
 
 	// Comments - клиент для работы с комментариями
 	Comments *comments.Service
+
+	// Notifications - клиент для работы с уведомлениями
+	Notifications *notifications.Service
 }
 
 // New создаёт новый корневой клиент SDK с настроенной аутентификацией.
@@ -59,14 +63,17 @@ func New(ctx context.Context, cfg Config) (*Client, error) {
 		HttpClient: httpClient,
 		AuthClient: authClient,
 	}
-	transportClient := transport.NewClient(transportCfg)
+	t := transport.NewClient(transportCfg)
 
-	posts := posts.New(transportClient)
-	user := user.New(transportClient)
-	comments := comments.New(transportClient)
+	posts := posts.New(t)
+	user := user.New(t)
+	comments := comments.New(t)
+	notifications := notifications.New(t)
+
 	return &Client{
-		Posts:    posts,
-		User:     user,
-		Comments: comments,
+		Posts:         posts,
+		User:          user,
+		Comments:      comments,
+		Notifications: notifications,
 	}, nil
 }
