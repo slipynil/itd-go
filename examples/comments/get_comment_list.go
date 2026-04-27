@@ -30,7 +30,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	feed := client.Posts.NewFeed(ctx, types.FeedTabPopular, 1)
+	feed := client.Posts.NewFeed(types.FeedTabPopular, 1)
 	posts, err := feed.Next(ctx)
 	if err != nil {
 		log.Fatal(err)
@@ -41,7 +41,7 @@ func main() {
 	pp.Printf("Автор поста: %s\n", firstPost.Author.DisplayName)
 	pp.Printf("Контент: %s\n", firstPost)
 
-	iterator := client.Comments.NewCommentList(ctx, firstPost.ID, 1)
+	iterator := client.Comments.NewCommentList(firstPost.ID, 1)
 
 	for iterator.HasMore() {
 		comments, err := iterator.Next(ctx)

@@ -35,7 +35,7 @@ func main() {
 
 	// Создаём итератор для постов пользователя
 	username := "nowkie"
-	iterator := client.Posts.NewUserPosts(ctx, username, 20)
+	iterator := client.Posts.NewUserPosts(username, 20)
 
 	fmt.Printf("Загрузка постов пользователя @%s...\n\n", username)
 

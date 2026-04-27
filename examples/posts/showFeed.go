@@ -33,7 +33,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	feed := client.Posts.NewFeed(ctx, types.FeedTabPopular, 10)
+	feed := client.Posts.NewFeed(types.FeedTabPopular, 10)
 
 	timer := time.NewTicker(5 * time.Second)
 	defer timer.Stop()

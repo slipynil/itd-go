@@ -295,7 +295,7 @@ type YourIterator interface {
 В том же файле `internal/api/yourmodule/iterator.go`:
 
 ```go
-func newYourIterator(ctx context.Context, s *Service, limit int) YourIterator {
+func newYourIterator(s *Service, limit int) YourIterator {
     fetch := func(ctx context.Context, token iterator.PageToken) ([]*types.YourType, iterator.PageToken, bool, error) {
         result, err := s.getYourData(ctx, token.Cursor, limit)
         if err != nil {
@@ -314,19 +314,18 @@ func newYourIterator(ctx context.Context, s *Service, limit int) YourIterator {
 В файле `api/yourmodule/yourmodule.go`:
 
 ```go
-func (s *Service) NewYourIterator(ctx context.Context, limit int) YourIterator {
-    return newYourIterator(ctx, s, limit)
+func (s *Service) NewYourIterator(limit int) YourIterator {
+    return newYourIterator(s, limit)
 }
 ```
 
 ### 4. Использование итератора
 
 ```go
-ctx := context.Background()
-iter := service.NewYourIterator(ctx, 20)
+iter := service.NewYourIterator(20)
 
 for iter.HasMore() {
-    items, err := iter.Next(ctx)
+    items, err := iter.Next(context.Background())
     if err != nil {
         log.Fatal(err)
     }
@@ -335,8 +334,8 @@ for iter.HasMore() {
 ```
 
 **Важно:** 
-- Контекст передаётся как первый параметр в конструктор итератора
-- Контекст также передаётся в метод `Next(ctx)` при каждом вызове
+- Контекст передаётся только в метод `Next(ctx)` при каждом вызове
+- Не передавайте контекст в конструктор итератора - он там не используется
 - Не храните контекст в структуре итератора (антипатерн в Go)
 ```
 

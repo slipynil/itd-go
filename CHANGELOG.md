@@ -2,6 +2,88 @@
 
 Все значимые изменения в проекте будут документированы в этом файле.
 
+## [0.4.0] - 2026-04-27
+
+### Добавлено
+
+- **Модуль уведомлений**: новый пакет `api/notifications/` для работы с уведомлениями ITD API
+  - `Service` - сервис для работы с уведомлениями
+  - `NotificationIterator` - итератор для постраничной загрузки уведомлений
+  - `NewIterator(limit)` - создание итератора уведомлений
+- **Новый тип**: `types.Notification` - структура уведомления с полной информацией об акторе и целевом объекте
+- **Godoc комментарии**: добавлена полная документация для всех публичных типов и методов модуля notifications
+
+### Изменено
+
+- **BREAKING**: удалён параметр `ctx` из конструкторов итераторов. Контекст теперь передаётся только в метод `Next(ctx)`
+  - `Posts.NewFeed(ctx, tab, limit)` → `Posts.NewFeed(tab, limit)`
+  - `Posts.NewUserPosts(ctx, username, limit)` → `Posts.NewUserPosts(username, limit)`
+  - `Comments.NewCommentList(ctx, postID, limit)` → `Comments.NewCommentList(postID, limit)`
+  - `Notifications.NewIterator(ctx, limit)` → `Notifications.NewIterator(limit)`
+- **Обновлена документация**: CLAUDE.md теперь показывает правильный паттерн создания итераторов без контекста в конструкторе
+- **Обновлены примеры**: все примеры использования итераторов обновлены под новый API
+
+### Исправлено
+
+- **Критическая ошибка**: исправлено использование `req.Body` вместо `resp.Body` в методе `getNotifications` (приводило к чтению из пустого тела запроса)
+
+### Миграция с 0.3.1
+
+#### Создание итераторов
+
+**Было (0.3.1):**
+```go
+ctx := context.Background()
+feedIter := client.Posts.NewFeed(ctx, types.FeedTabPopular, 20)
+userIter := client.Posts.NewUserPosts(ctx, "username", 20)
+commentIter := client.Comments.NewCommentList(ctx, postID, 20)
+
+for feedIter.HasMore() {
+    posts, err := feedIter.Next(ctx)
+    // ...
+}
+```
+
+**Стало (0.4.0):**
+```go
+// Контекст НЕ передаётся в конструктор
+feedIter := client.Posts.NewFeed(types.FeedTabPopular, 20)
+userIter := client.Posts.NewUserPosts("username", 20)
+commentIter := client.Comments.NewCommentList(postID, 20)
+
+// Контекст передаётся только в Next()
+for feedIter.HasMore() {
+    posts, err := feedIter.Next(context.Background())
+    // ...
+}
+```
+
+**Примечание:** Это изменение делает API более идиоматичным для Go - контекст передаётся только туда, где он реально используется (при выполнении HTTP запроса в `Next()`). Каждый вызов `Next()` может использовать свой контекст с разными таймаутами или условиями отмены.
+
+#### Использование модуля уведомлений
+
+**Новая функциональность (0.4.0):**
+```go
+// Создание итератора уведомлений
+iter := client.Notifications.NewIterator(20)
+
+for iter.HasMore() {
+    notifications, err := iter.Next(context.Background())
+    if err != nil {
+        log.Fatal(err)
+    }
+    
+    for _, notif := range notifications {
+        fmt.Printf("[%s] %s: %s\n", 
+            notif.Type, 
+            notif.Actor.DisplayName, 
+            notif.Preview)
+    }
+}
+```
+
+---
+
 ## [0.3.1] - 2026-04-26
 
 ### Добавлено

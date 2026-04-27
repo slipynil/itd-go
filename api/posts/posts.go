@@ -26,24 +26,22 @@ func New(t *transport.Client) *Service {
 
 // NewFeed создаёт итератор для получения ленты постов.
 // Параметры:
-//   - ctx: контекст для управления временем жизни запроса
 //   - tab: тип сортировки ("popular", "clan", "following")
 //   - limit: количество постов на страницу (рекомендуется 10-50)
 //
 // Возвращает FeedIterator для постраничной загрузки постов.
-func (s *Service) NewFeed(ctx context.Context, tab types.FeedTab, limit int) FeedIterator {
-	return newFeedIterator(ctx, s, tab, limit)
+func (s *Service) NewFeed(tab types.FeedTab, limit int) FeedIterator {
+	return newFeedIterator(s, tab, limit)
 }
 
 // NewUserPosts создаёт итератор для получения постов пользователя.
 // Параметры:
-//   - ctx: контекст для управления временем жизни запроса
 //   - username: имя пользователя (без @)
 //   - limit: количество постов на страницу (рекомендуется 10-50)
 //
 // Возвращает FeedIterator для постраничной загрузки постов пользователя.
-func (s *Service) NewUserPosts(ctx context.Context, username string, limit int) FeedIterator {
-	return newUserPostsIterator(ctx, s, username, limit)
+func (s *Service) NewUserPosts(username string, limit int) FeedIterator {
+	return newUserPostsIterator(s, username, limit)
 }
 
 // Get получает пост по его ID.
