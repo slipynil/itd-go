@@ -7,27 +7,16 @@ import (
 	"log"
 	"os"
 
-	"github.com/joho/godotenv"
+	_ "github.com/joho/godotenv/autoload"
 	"github.com/k0kubun/pp"
 	itdgo "github.com/slipynil/itd-go"
 )
 
 func main() {
-
-	// Загружаем переменные окружения из .env файла
-	if err := godotenv.Load(); err != nil {
-		log.Fatal("Ошибка загрузки .env файла")
-	}
-
-	token := os.Getenv("REFRESH_TOKEN")
-	userAgent := os.Getenv("USER_AGENT")
-
 	ctx := context.Background()
-
-	// Создаём конфигурацию и клиент ITD
 	cfg := itdgo.Config{
-		RefreshToken: token,
-		UserAgent:    userAgent,
+		RefreshToken: os.Getenv("REFRESH_TOKEN"),
+		UserAgent:    os.Getenv("USER_AGENT"),
 	}
 	client, err := itdgo.New(ctx, cfg)
 	if err != nil {

@@ -14,11 +14,9 @@ import (
 
 func main() {
 	ctx := context.Background()
-	userAgent := os.Getenv("USER_AGENT")
-	token := os.Getenv("REFRESH_TOKEN")
 	cfg := itdgo.Config{
-		UserAgent:    userAgent,
-		RefreshToken: token,
+		RefreshToken: os.Getenv("REFRESH_TOKEN"),
+		UserAgent:    os.Getenv("USER_AGENT"),
 	}
 	client, err := itdgo.New(ctx, cfg)
 	if err != nil {
