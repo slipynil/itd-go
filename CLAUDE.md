@@ -14,12 +14,14 @@
 ```
 ┌─────────────────────────────────────┐
 │  Client (публичный API)             │
-│  - Posts, User, Comments            │
+│  - Posts, User, Comments,           │
+│    Notifications                    │
 └──────────────┬──────────────────────┘
                │
 ┌──────────────▼──────────────────────┐
 │  API Layer (api/)                   │
-│  - posts, user, comments             │
+│  - posts, user, comments,           │
+│    notifications                    │
 │  - Бизнес-логика, итераторы        │
 └──────────────┬──────────────────────┘
                │
@@ -53,9 +55,10 @@ type Iterator[T any] interface {
 // Конкретные типы
 type FeedIterator = Iterator[*Post]
 type CommentIterator = Iterator[*Comment]
+type NotificationIterator = Iterator[*Notification]
 ```
 
-**Важно:** Все итераторы возвращают **указатели** на элементы (`*Post`, `*Comment`), а не значения.
+**Важно:** Все итераторы возвращают **указатели** на элементы (`*Post`, `*Comment`, `*Notification`), а не значения.
 
 ### 2. Аутентификация
 
@@ -263,6 +266,79 @@ func (s *Service) CreateSomething(ctx context.Context, content string, filePaths
 }
 ```
 
+## API уведомлений
+
+Модуль `api/notifications` предоставляет методы для работы с уведомлениями.
+
+### Основные методы
+
+#### ListUnread - получение непрочитанных уведомлений
+
+```go
+// Получить все непрочитанные уведомления
+notifications, err := client.Notifications.ListUnread(ctx)
+if err != nil {
+    log.Fatal(err)
+}
+
+for _, n := range notifications {
+    fmt.Printf("[%s] %s: %s\n", n.Type, n.Actor.DisplayName, n.Preview)
+}
+```
+
+**Важно:** Метод останавливается при первом прочитанном уведомлении, так как API всегда возвращает уведомления в хронологическом порядке (новые первыми).
+
+#### MarkRead - пометка по ID
+
+```go
+// Пометить конкретные уведомления как прочитанные
+err := client.Notifications.MarkRead(ctx, "id1", "id2", "id3")
+if err != nil {
+    log.Fatal(err)
+}
+```
+
+#### MarkNotificationsRead - пометка загруженных уведомлений
+
+```go
+// Получить непрочитанные
+notifications, err := client.Notifications.ListUnread(ctx)
+if err != nil {
+    log.Fatal(err)
+}
+
+// Показать пользователю
+for _, n := range notifications {
+    fmt.Println(n.Preview)
+}
+
+// Пометить как прочитанные (без повторной загрузки)
+err = client.Notifications.MarkNotificationsRead(ctx, notifications)
+if err != nil {
+    log.Fatal(err)
+}
+```
+
+**Преимущество:** Избегает повторной загрузки уведомлений, если они уже получены.
+
+#### MarkAllRead - пометка всех непрочитанных
+
+```go
+// Пометить все непрочитанные уведомления одной командой
+err := client.Notifications.MarkAllRead(ctx)
+if err != nil {
+    log.Fatal(err)
+}
+```
+
+**Примечание:** Метод внутри вызывает `ListUnread()` и затем `MarkRead()`. Если уведомления уже загружены, используйте `MarkNotificationsRead()`.
+
+### Выбор метода
+
+- **`MarkRead(ctx, ids...)`** - когда есть только ID уведомлений
+- **`MarkNotificationsRead(ctx, notifications)`** - когда уведомления уже загружены
+- **`MarkAllRead(ctx)`** - когда нужно пометить всё одной командой без предварительной загрузки
+
 ## Как создать новый итератор
 
 ### 1. Определить интерфейс в пакете, где он используется
@@ -354,6 +430,7 @@ itd-go/
 ├── api/                  # Публичные API реализации
 │   ├── posts/            # API постов
 │   ├── comments/         # API комментариев
+│   ├── notifications/    # API уведомлений
 │   └── user/             # API пользователей
 ├── internal/
 │   ├── auth/             # Аутентификация
@@ -370,6 +447,7 @@ itd-go/
 └── examples/             # Примеры использования
     ├── posts/
     ├── comments/
+    ├── notifications/
     └── user/
 ```
 
