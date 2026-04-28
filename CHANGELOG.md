@@ -6,6 +6,14 @@
 
 ### Добавлено
 
+- **PostBuilder**: новый тип `types.PostBuilder` для создания постов с форматированием текста
+  - Fluent API для применения форматирования: `Bold()`, `Italic()`, `Underline()`, `Strike()`, `Spoiler()`, `Monospace()`, `Link()`
+  - Форматирование применяется ко **всем вхождениям** целых слов в тексте
+  - Проверка границ слова: форматируются только целые слова, не части слов
+  - Корректная работа с Unicode (руны, не байты)
+  - Пример: `types.NewPost("Go Go Go!").Bold("Go")` выделит все три вхождения слова "Go"
+- **Поле Spans**: добавлено поле `Spans []Span` в `types.CreatedPostBase` для хранения информации о форматировании
+- **Поле URL**: добавлено поле `URL string` в `types.Span` для ссылок
 - **Модуль уведомлений**: новый пакет `api/notifications/` для работы с уведомлениями ITD API
   - `Service` - сервис для работы с уведомлениями
   - `NotificationIterator` - итератор для постраничной загрузки уведомлений
@@ -24,6 +32,11 @@
 
 ### Изменено
 
+- **BREAKING**: `Posts.Create()` и `Posts.CreateWithPoll()` теперь принимают `*types.PostBuilder` вместо `string`
+  - **Было**: `Create(ctx, "текст поста", filePaths...)`
+  - **Стало**: `Create(ctx, types.NewPost("текст поста").Bold("текст"), filePaths...)`
+  - Для постов без форматирования: `Create(ctx, types.NewPost("текст поста"), filePaths...)`
+  - Это позволяет применять форматирование к тексту постов (жирный, курсив, ссылки и т.д.)
 - **BREAKING**: удалён параметр `ctx` из конструкторов итераторов. Контекст теперь передаётся только в метод `Next(ctx)`
   - `Posts.NewFeed(ctx, tab, limit)` → `Posts.NewFeed(tab, limit)`
   - `Posts.NewUserPosts(ctx, username, limit)` → `Posts.NewUserPosts(username, limit)`
@@ -74,6 +87,32 @@ for {
 - Автоматическое переподключение нужно реализовывать на стороне клиента
 
 ### Миграция с 0.3.1
+
+#### Создание постов с форматированием
+
+**Было (0.3.1):**
+```go
+post, err := client.Posts.Create(ctx, "Текст поста", filePaths...)
+```
+
+**Стало (0.4.0):**
+```go
+// Без форматирования
+builder := types.NewPost("Текст поста")
+post, err := client.Posts.Create(ctx, builder, filePaths...)
+
+// С форматированием
+builder := types.NewPost("Go is awesome! I love Go programming.").
+    Bold("Go").        // Выделит все вхождения слова "Go"
+    Italic("awesome"). // Курсив для "awesome"
+    Underline("love")  // Подчёркивание для "love"
+post, err := client.Posts.Create(ctx, builder, filePaths...)
+```
+
+**Важно**: 
+- Форматирование применяется только к **целым словам**
+- Если слово повторяется в тексте, форматирование применится ко **всем вхождениям**
+- Части слов не форматируются: `NewPost("category").Bold("cat")` не применит форматирование
 
 #### Создание итераторов
 

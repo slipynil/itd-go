@@ -37,10 +37,14 @@ func main() {
 		MultipleChoice: false, // Можно выбрать только один вариант
 	}
 
-	content := "Опрос для разработчиков! 🚀"
+	content := "Опрос для разработчиков! Какой язык выбирают разработчики? 🚀"
+	builder := types.NewPost(content).
+		Bold("Опрос").
+		Italic("разработчиков"). // Применится к обоим вхождениям слова
+		Link("язык", "https://go.dev")
 
 	// Создаём пост с опросом
-	post, err := client.Posts.CreateWithPoll(ctx, content, &poll)
+	post, err := client.Posts.CreateWithPoll(ctx, builder, &poll)
 	if err != nil {
 		log.Fatal(err)
 	}

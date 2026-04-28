@@ -82,8 +82,8 @@ func (s *Service) Get(ctx context.Context, postID string) (*types.Post, error) {
 //   - filePaths: пути к файлам для загрузки и прикрепления к посту
 //
 // Возвращает созданный пост или ошибку при проблемах с сетью/API.
-func (s *Service) Create(ctx context.Context, content string, filePaths ...string) (*types.CreatedPost, error) {
-	if strings.TrimSpace(content) == "" && len(filePaths) == 0 {
+func (s *Service) Create(ctx context.Context, builder *types.PostBuilder, filePaths ...string) (*types.CreatedPost, error) {
+	if strings.TrimSpace(builder.Content) == "" && len(filePaths) == 0 {
 		return nil, errors.ErrEmptyContent
 	}
 	if err := validatePostFiles(filePaths); err != nil {
@@ -96,7 +96,8 @@ func (s *Service) Create(ctx context.Context, content string, filePaths ...strin
 	}
 
 	payload := createPostRequest{
-		Content:       content,
+		Content:       builder.Content,
+		Spans:         builder.Spans,
 		AttachmentIDs: attachmentIDs,
 	}
 
@@ -131,7 +132,7 @@ func (s *Service) Create(ctx context.Context, content string, filePaths ...strin
 // Возвращает созданный пост с опросом или ошибку при проблемах с сетью/API.
 func (s *Service) CreateWithPoll(
 	ctx context.Context,
-	content string,
+	builder *types.PostBuilder,
 	poll *types.PollRequest,
 	filePaths ...string,
 ) (*types.CreatedPostWithPoll, error) {
@@ -151,7 +152,8 @@ func (s *Service) CreateWithPoll(
 	}
 
 	payload := createPostRequest{
-		Content:       content,
+		Content:       builder.Content,
+		Spans:         builder.Spans,
 		AttachmentIDs: attachmentIDs,
 		Poll:          poll,
 	}
