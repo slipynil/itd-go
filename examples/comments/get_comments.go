@@ -14,11 +14,9 @@ import (
 
 func main() {
 	ctx := context.Background()
-	userAgent := os.Getenv("USER_AGENT")
-	token := os.Getenv("REFRESH_TOKEN")
 	cfg := itdgo.Config{
-		UserAgent:    userAgent,
-		RefreshToken: token,
+		RefreshToken: os.Getenv("REFRESH_TOKEN"),
+		UserAgent:    os.Getenv("USER_AGENT"),
 	}
 	client, err := itdgo.New(ctx, cfg)
 	if err != nil {
@@ -26,7 +24,7 @@ func main() {
 	}
 
 	postID := "a7b2512f-7ee7-4d7f-8224-8d25e94bf0ed"
-	iter := client.Comments.NewCommentList(ctx, postID, 10)
+	iter := client.Comments.NewCommentList(postID, 10)
 
 	if iter.HasMore() {
 		comments, err := iter.Next(ctx)

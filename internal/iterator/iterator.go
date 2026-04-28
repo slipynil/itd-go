@@ -9,6 +9,9 @@ type PageToken struct {
 
 	// Page - номер страницы для page-based пагинации
 	Page int
+
+	// Offset - смещение для offset-based пагинации
+	Offset int
 }
 
 // FetchFunc определяет функцию для получения следующей страницы данных.

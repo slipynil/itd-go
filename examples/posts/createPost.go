@@ -10,15 +10,14 @@ import (
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/k0kubun/pp"
 	itdgo "github.com/slipynil/itd-go"
+	"github.com/slipynil/itd-go/types"
 )
 
 func main() {
 	ctx := context.Background()
-	userAgent := os.Getenv("USER_AGENT")
-	token := os.Getenv("REFRESH_TOKEN")
 	cfg := itdgo.Config{
-		UserAgent:    userAgent,
-		RefreshToken: token,
+		RefreshToken: os.Getenv("REFRESH_TOKEN"),
+		UserAgent:    os.Getenv("USER_AGENT"),
 	}
 	client, err := itdgo.New(ctx, cfg)
 	if err != nil {
@@ -30,7 +29,13 @@ func main() {
 		"/home/user/Pictures/cat.webp",
 	}
 
-	post, err := client.Posts.Create(ctx, "cat meme", filePaths...)
+	// Демонстрация форматирования: Bold применится ко всем вхождениям слова "Go"
+	builder := types.NewPost("Go is awesome! I love Go programming. Go Go Go!").
+		Bold("Go").
+		Italic("awesome").
+		Underline("love")
+
+	post, err := client.Posts.Create(ctx, builder, filePaths...)
 	if err != nil {
 		log.Fatal(err)
 	}

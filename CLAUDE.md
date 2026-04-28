@@ -14,12 +14,14 @@
 ```
 ┌─────────────────────────────────────┐
 │  Client (публичный API)             │
-│  - Posts, User, Comments            │
+│  - Posts, User, Comments,           │
+│    Notifications                    │
 └──────────────┬──────────────────────┘
                │
 ┌──────────────▼──────────────────────┐
 │  API Layer (api/)                   │
-│  - posts, user, comments             │
+│  - posts, user, comments,           │
+│    notifications                    │
 │  - Бизнес-логика, итераторы        │
 └──────────────┬──────────────────────┘
                │
@@ -53,9 +55,10 @@ type Iterator[T any] interface {
 // Конкретные типы
 type FeedIterator = Iterator[*Post]
 type CommentIterator = Iterator[*Comment]
+type NotificationIterator = Iterator[*Notification]
 ```
 
-**Важно:** Все итераторы возвращают **указатели** на элементы (`*Post`, `*Comment`), а не значения.
+**Важно:** Все итераторы возвращают **указатели** на элементы (`*Post`, `*Comment`, `*Notification`), а не значения.
 
 ### 2. Аутентификация
 
@@ -263,6 +266,134 @@ func (s *Service) CreateSomething(ctx context.Context, content string, filePaths
 }
 ```
 
+## API уведомлений
+
+Модуль `api/notifications` предоставляет методы для работы с уведомлениями.
+
+### Основные методы
+
+#### ListUnread - получение непрочитанных уведомлений
+
+```go
+// Получить все непрочитанные уведомления
+notifications, err := client.Notifications.ListUnread(ctx)
+if err != nil {
+    log.Fatal(err)
+}
+
+for _, n := range notifications {
+    fmt.Printf("[%s] %s: %s\n", n.Type, n.Actor.DisplayName, n.Preview)
+}
+```
+
+**Важно:** Метод останавливается при первом прочитанном уведомлении, так как API всегда возвращает уведомления в хронологическом порядке (новые первыми).
+
+#### MarkRead - пометка по ID
+
+```go
+// Пометить конкретные уведомления как прочитанные
+err := client.Notifications.MarkRead(ctx, "id1", "id2", "id3")
+if err != nil {
+    log.Fatal(err)
+}
+```
+
+#### MarkNotificationsRead - пометка загруженных уведомлений
+
+```go
+// Получить непрочитанные
+notifications, err := client.Notifications.ListUnread(ctx)
+if err != nil {
+    log.Fatal(err)
+}
+
+// Показать пользователю
+for _, n := range notifications {
+    fmt.Println(n.Preview)
+}
+
+// Пометить как прочитанные (без повторной загрузки)
+err = client.Notifications.MarkNotificationsRead(ctx, notifications)
+if err != nil {
+    log.Fatal(err)
+}
+```
+
+**Преимущество:** Избегает повторной загрузки уведомлений, если они уже получены.
+
+#### MarkAllRead - пометка всех непрочитанных
+
+```go
+// Пометить все непрочитанные уведомления одной командой
+err := client.Notifications.MarkAllRead(ctx)
+if err != nil {
+    log.Fatal(err)
+}
+```
+
+**Примечание:** Метод внутри вызывает `ListUnread()` и затем `MarkRead()`. Если уведомления уже загружены, используйте `MarkNotificationsRead()`.
+
+#### Stream - получение уведомлений в реальном времени
+
+```go
+// Открыть SSE стрим для получения уведомлений
+stream, errs := client.Notifications.Stream(ctx)
+
+for {
+    select {
+    case n, ok := <-stream:
+        if !ok {
+            return // стрим закрыт
+        }
+        fmt.Printf("[%s] %s: %s\n", n.Type, n.Actor.DisplayName, n.Preview)
+        
+    case err := <-errs:
+        log.Printf("Stream error: %v", err)
+        return // при ошибке стрим автоматически закрывается
+    }
+}
+```
+
+**Важно:** 
+- Метод возвращает два канала: `<-chan *types.StreamNotification` для данных и `<-chan error` для ошибок
+- При получении ошибки стрим автоматически закрывается
+- Автоматическое переподключение не реализовано - нужно реализовывать на стороне клиента
+- Стрим пропускает heartbeat события (keepalive от сервера без ID)
+- `StreamNotification` отличается от `Notification`: содержит дополнительные поля `UserID`, `Sound` и nullable `ReadAt`
+
+### Выбор метода
+
+- **`MarkRead(ctx, ids...)`** - когда есть только ID уведомлений
+- **`MarkNotificationsRead(ctx, notifications)`** - когда уведомления уже загружены
+- **`MarkAllRead(ctx)`** - когда нужно пометить всё одной командой без предварительной загрузки
+- **`Stream(ctx)`** - когда нужно получать уведомления в реальном времени через SSE
+
+### TODO: Улучшения для Stream()
+
+**Кастомный логгер для обработки ошибок парсинга**
+
+Текущее поведение: при ошибке парсинга JSON весь стрим закрывается (fail-fast подход).
+
+Планируется добавить возможность передавать кастомный логгер в конфигурацию клиента:
+```go
+type Config struct {
+    // ...
+    Logger Logger // интерфейс для логирования ошибок стрима
+}
+
+type Logger interface {
+    Error(msg string, err error)
+    Warn(msg string)
+}
+```
+
+Это позволит:
+- Логировать ошибки парсинга без закрытия стрима (resilient режим)
+- Пользователю самому решать, как обрабатывать невалидные события
+- Отлаживать проблемы с API без потери соединения
+
+**Причина:** Если API итд.com иногда отправляет невалидные события, текущий подход приводит к частым переподключениям. Кастомный логгер позволит пропускать битые события и продолжать работу стрима.
+
 ## Как создать новый итератор
 
 ### 1. Определить интерфейс в пакете, где он используется
@@ -295,7 +426,7 @@ type YourIterator interface {
 В том же файле `internal/api/yourmodule/iterator.go`:
 
 ```go
-func newYourIterator(ctx context.Context, s *Service, limit int) YourIterator {
+func newYourIterator(s *Service, limit int) YourIterator {
     fetch := func(ctx context.Context, token iterator.PageToken) ([]*types.YourType, iterator.PageToken, bool, error) {
         result, err := s.getYourData(ctx, token.Cursor, limit)
         if err != nil {
@@ -314,19 +445,18 @@ func newYourIterator(ctx context.Context, s *Service, limit int) YourIterator {
 В файле `api/yourmodule/yourmodule.go`:
 
 ```go
-func (s *Service) NewYourIterator(ctx context.Context, limit int) YourIterator {
-    return newYourIterator(ctx, s, limit)
+func (s *Service) NewYourIterator(limit int) YourIterator {
+    return newYourIterator(s, limit)
 }
 ```
 
 ### 4. Использование итератора
 
 ```go
-ctx := context.Background()
-iter := service.NewYourIterator(ctx, 20)
+iter := service.NewYourIterator(20)
 
 for iter.HasMore() {
-    items, err := iter.Next(ctx)
+    items, err := iter.Next(context.Background())
     if err != nil {
         log.Fatal(err)
     }
@@ -335,8 +465,8 @@ for iter.HasMore() {
 ```
 
 **Важно:** 
-- Контекст передаётся как первый параметр в конструктор итератора
-- Контекст также передаётся в метод `Next(ctx)` при каждом вызове
+- Контекст передаётся только в метод `Next(ctx)` при каждом вызове
+- Не передавайте контекст в конструктор итератора - он там не используется
 - Не храните контекст в структуре итератора (антипатерн в Go)
 ```
 
@@ -355,6 +485,7 @@ itd-go/
 ├── api/                  # Публичные API реализации
 │   ├── posts/            # API постов
 │   ├── comments/         # API комментариев
+│   ├── notifications/    # API уведомлений
 │   └── user/             # API пользователей
 ├── internal/
 │   ├── auth/             # Аутентификация
@@ -371,6 +502,7 @@ itd-go/
 └── examples/             # Примеры использования
     ├── posts/
     ├── comments/
+    ├── notifications/
     └── user/
 ```
 

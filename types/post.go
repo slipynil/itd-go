@@ -16,6 +16,9 @@ type CreatedPostBase struct {
 
 	// Attachments - массив вложений (изображения, видео, файлы)
 	Attachments []Attachment `json:"attachments"`
+
+	// Spans - массив спанов (выделений) в тексте поста
+	Spans []Span `json:"spans"`
 }
 
 // CreatedPost представляет созданный пост в социальной сети ITD.
@@ -118,9 +121,13 @@ type Span struct {
 	// Offset - позиция начала форматирования в тексте (в символах)
 	Offset int `json:"offset"`
 
-	// Эти поля специфичны для разных типов Span
+	// URL - ссылка на ресурс в тексте
+	URL string `json:"url,omitempty"`
+
+	// Username - имя пользователя (для ссылок)
 	Username string `json:"username,omitempty"`
-	Tag      string `json:"tag,omitempty"`
+	// Хештеги
+	Tag string `json:"tag,omitempty"`
 }
 
 // Attachment представляет файл, прикреплённый к посту.

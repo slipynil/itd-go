@@ -16,17 +16,22 @@ func main() {
 	ctx := context.Background()
 	cfg := itdgo.Config{
 		RefreshToken: os.Getenv("REFRESH_TOKEN"),
-		UserAgent:    os.Getenv("USER_AGENT"),
+		UserAgent:    os.Getenv("USERAGENT"),
 	}
-
 	client, err := itdgo.New(ctx, cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
-	postID := "c36ae616-765f-4119-8380-5fd8080df2d0"
-	like, err := client.Posts.Unlike(ctx, postID)
-	if err != nil {
-		log.Fatal(err)
+
+	iter := client.Notifications.NewIterator(10)
+
+	for iter.HasMore() {
+		notifications, err := iter.Next(ctx)
+		if err != nil {
+			log.Fatal(err)
+		}
+		for _, notification := range notifications {
+			pp.Println(notification)
+		}
 	}
-	pp.Println(like)
 }

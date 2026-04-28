@@ -7,22 +7,17 @@ import (
 	"log"
 	"os"
 
-	"github.com/joho/godotenv"
+	_ "github.com/joho/godotenv/autoload"
 	"github.com/k0kubun/pp"
 	itdgo "github.com/slipynil/itd-go"
 )
 
 func main() {
-	godotenv.Load()
-	token := os.Getenv("REFRESH_TOKEN")
-	userAgent := os.Getenv("USER_AGENT")
-
-	cfg := itdgo.Config{
-		RefreshToken: token,
-		UserAgent:    userAgent,
-	}
-
 	ctx := context.Background()
+	cfg := itdgo.Config{
+		RefreshToken: os.Getenv("REFRESH_TOKEN"),
+		UserAgent:    os.Getenv("USER_AGENT"),
+	}
 
 	client, err := itdgo.New(ctx, cfg)
 	if err != nil {
@@ -32,7 +27,7 @@ func main() {
 	postID := "c36ae616-765f-4119-8380-5fd8080df2d0"
 
 	// Получаем первую страницу комментариев
-	iter := client.Comments.NewCommentList(ctx, postID, 10)
+	iter := client.Comments.NewCommentList(postID, 10)
 	if !iter.HasMore() {
 		log.Fatal("Нет комментариев для ответа")
 	}

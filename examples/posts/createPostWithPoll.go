@@ -7,26 +7,18 @@ import (
 	"log"
 	"os"
 
-	"github.com/joho/godotenv"
+	_ "github.com/joho/godotenv/autoload"
 	"github.com/k0kubun/pp"
 	itdgo "github.com/slipynil/itd-go"
 	"github.com/slipynil/itd-go/types"
 )
 
 func main() {
-
-	if err := godotenv.Load(); err != nil {
-		log.Fatal(err)
-	}
-
-	refreshToken := os.Getenv("REFRESH_TOKEN")
-	userAgent := os.Getenv("USER_AGENT")
-
-	cfg := itdgo.Config{
-		RefreshToken: refreshToken,
-		UserAgent:    userAgent,
-	}
 	ctx := context.Background()
+	cfg := itdgo.Config{
+		RefreshToken: os.Getenv("REFRESH_TOKEN"),
+		UserAgent:    os.Getenv("USER_AGENT"),
+	}
 
 	client, err := itdgo.New(ctx, cfg)
 	if err != nil {
@@ -45,10 +37,14 @@ func main() {
 		MultipleChoice: false, // Можно выбрать только один вариант
 	}
 
-	content := "Опрос для разработчиков! 🚀"
+	content := "Опрос для разработчиков! Какой язык выбирают разработчики? 🚀"
+	builder := types.NewPost(content).
+		Bold("Опрос").
+		Italic("разработчиков"). // Применится к обоим вхождениям слова
+		Link("язык", "https://go.dev")
 
 	// Создаём пост с опросом
-	post, err := client.Posts.CreateWithPoll(ctx, content, &poll)
+	post, err := client.Posts.CreateWithPoll(ctx, builder, &poll)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -18,15 +18,19 @@ func main() {
 		RefreshToken: os.Getenv("REFRESH_TOKEN"),
 		UserAgent:    os.Getenv("USER_AGENT"),
 	}
-
 	client, err := itdgo.New(ctx, cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
-	postID := "c36ae616-765f-4119-8380-5fd8080df2d0"
-	like, err := client.Posts.Unlike(ctx, postID)
+
+	notifications, err := client.Notifications.ListUnread(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
-	pp.Println(like)
+	pp.Println(notifications)
+
+	err = client.Notifications.MarkNotificationsRead(ctx, notifications)
+	if err != nil {
+		log.Fatal(err)
+	}
 }

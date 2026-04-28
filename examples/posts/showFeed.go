@@ -8,32 +8,25 @@ import (
 	"os"
 	"time"
 
-	"github.com/joho/godotenv"
+	_ "github.com/joho/godotenv/autoload"
 	"github.com/k0kubun/pp"
 	itdgo "github.com/slipynil/itd-go"
 	"github.com/slipynil/itd-go/types"
 )
 
 func main() {
-	if err := godotenv.Load(); err != nil {
-		log.Fatal(err)
-	}
-
-	refreshToken := os.Getenv("REFRESH_TOKEN")
-	userAgent := os.Getenv("USER_AGENT")
-
-	cfg := itdgo.Config{
-		RefreshToken: refreshToken,
-		UserAgent:    userAgent,
-	}
 	ctx := context.Background()
+	cfg := itdgo.Config{
+		RefreshToken: os.Getenv("REFRESH_TOKEN"),
+		UserAgent:    os.Getenv("USER_AGENT"),
+	}
 
 	client, err := itdgo.New(ctx, cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	feed := client.Posts.NewFeed(ctx, types.FeedTabPopular, 10)
+	feed := client.Posts.NewFeed(types.FeedTabPopular, 10)
 
 	timer := time.NewTicker(5 * time.Second)
 	defer timer.Stop()

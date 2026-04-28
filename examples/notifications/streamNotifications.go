@@ -23,10 +23,17 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	postID := "c36ae616-765f-4119-8380-5fd8080df2d0"
-	like, err := client.Posts.Unlike(ctx, postID)
-	if err != nil {
-		log.Fatal(err)
+	stream, errs := client.Notifications.Stream(ctx)
+	for {
+		select {
+		case n, ok := <-stream:
+			if !ok {
+				return
+			}
+			pp.Println(n)
+		case err := <-errs:
+			log.Println(err)
+			return
+		}
 	}
-	pp.Println(like)
 }

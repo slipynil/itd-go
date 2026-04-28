@@ -2,6 +2,173 @@
 
 Все значимые изменения в проекте будут документированы в этом файле.
 
+## [0.4.0] - 2026-04-27
+
+### Добавлено
+
+- **PostBuilder**: новый тип `types.PostBuilder` для создания постов с форматированием текста
+  - Fluent API для применения форматирования: `Bold()`, `Italic()`, `Underline()`, `Strike()`, `Spoiler()`, `Monospace()`, `Link()`
+  - Форматирование применяется ко **всем вхождениям** целых слов в тексте
+  - Проверка границ слова: форматируются только целые слова, не части слов
+  - Корректная работа с Unicode (руны, не байты)
+  - Пример: `types.NewPost("Go Go Go!").Bold("Go")` выделит все три вхождения слова "Go"
+- **Поле Spans**: добавлено поле `Spans []Span` в `types.CreatedPostBase` для хранения информации о форматировании
+- **Поле URL**: добавлено поле `URL string` в `types.Span` для ссылок
+- **Модуль уведомлений**: новый пакет `api/notifications/` для работы с уведомлениями ITD API
+  - `Service` - сервис для работы с уведомлениями
+  - `NotificationIterator` - итератор для постраничной загрузки уведомлений
+  - `NewIterator(limit)` - создание итератора уведомлений
+  - `ListUnread(ctx)` - получение всех непрочитанных уведомлений
+  - `MarkAllRead(ctx)` - пометка всех непрочитанных уведомлений как прочитанных
+  - `MarkNotificationsRead(ctx, notifications)` - пометка переданных уведомлений как прочитанных
+  - `MarkRead(ctx, ids...)` - пометка уведомлений по ID как прочитанных
+  - `Stream(ctx)` - получение уведомлений в реальном времени через SSE (Server-Sent Events)
+- **Новый тип**: `types.Notification` - структура уведомления с полной информацией об акторе и целевом объекте
+- **Новый тип**: `types.StreamNotification` - структура уведомления из SSE стрима с дополнительными полями (`UserID`, `Sound`)
+- **Новый тип**: `types.Actor` - информация об акторе уведомления (извлечён из inline структуры)
+- **Новый пример**: `examples/notifications/readAllNotifications.go` - демонстрация получения и пометки непрочитанных уведомлений
+- **Новый пример**: `examples/notifications/streamNotifications.go` - демонстрация работы со стримом уведомлений в реальном времени
+- **Godoc комментарии**: добавлена полная документация для всех публичных типов и методов модуля notifications
+
+### Изменено
+
+- **BREAKING**: `Posts.Create()` и `Posts.CreateWithPoll()` теперь принимают `*types.PostBuilder` вместо `string`
+  - **Было**: `Create(ctx, "текст поста", filePaths...)`
+  - **Стало**: `Create(ctx, types.NewPost("текст поста").Bold("текст"), filePaths...)`
+  - Для постов без форматирования: `Create(ctx, types.NewPost("текст поста"), filePaths...)`
+  - Это позволяет применять форматирование к тексту постов (жирный, курсив, ссылки и т.д.)
+- **BREAKING**: удалён параметр `ctx` из конструкторов итераторов. Контекст теперь передаётся только в метод `Next(ctx)`
+  - `Posts.NewFeed(ctx, tab, limit)` → `Posts.NewFeed(tab, limit)`
+  - `Posts.NewUserPosts(ctx, username, limit)` → `Posts.NewUserPosts(username, limit)`
+  - `Comments.NewCommentList(ctx, postID, limit)` → `Comments.NewCommentList(postID, limit)`
+  - `Notifications.NewIterator(ctx, limit)` → `Notifications.NewIterator(limit)`
+- **Обновлена документация**: CLAUDE.md теперь показывает правильный паттерн создания итераторов без контекста в конструкторе
+- **Обновлены примеры**: все примеры использования итераторов обновлены под новый API
+- **Рефакторинг типа `Notification`**: поле `Actor` теперь использует именованный тип `types.Actor` вместо inline структуры
+  - Устраняет дублирование кода между `Notification` и `StreamNotification`
+  - Не является breaking change - структура полей осталась идентичной
+
+### Исправлено
+
+- **Критическая ошибка**: исправлено использование `req.Body` вместо `resp.Body` в методе `getNotifications` (приводило к чтению из пустого тела запроса)
+
+### Технические детали
+
+#### Различия между Notification и StreamNotification
+
+- `Notification.ReadAt` - `time.Time` (всегда имеет значение, может быть zero value)
+- `StreamNotification.ReadAt` - `*time.Time` (nullable, `nil` если уведомление не прочитано)
+- `StreamNotification` содержит дополнительные поля: `UserID`, `Sound`
+
+#### Использование Stream()
+
+```go
+ctx := context.Background()
+stream, errs := client.Notifications.Stream(ctx)
+
+for {
+    select {
+    case n, ok := <-stream:
+        if !ok {
+            return // стрим закрыт
+        }
+        fmt.Printf("[%s] %s: %s\n", n.Type, n.Actor.DisplayName, n.Preview)
+    case err := <-errs:
+        log.Printf("Stream error: %v", err)
+        return // при ошибке стрим автоматически закрывается
+    }
+}
+```
+
+**Важно**: 
+- Метод возвращает два канала: `<-chan *types.StreamNotification` для данных и `<-chan error` для ошибок
+- Стрим пропускает события без `ID` (heartbeat keepalive от сервера)
+- При ошибке парсинга JSON весь стрим закрывается (не resilient к невалидным событиям)
+- Автоматическое переподключение нужно реализовывать на стороне клиента
+
+### Миграция с 0.3.1
+
+#### Создание постов с форматированием
+
+**Было (0.3.1):**
+```go
+post, err := client.Posts.Create(ctx, "Текст поста", filePaths...)
+```
+
+**Стало (0.4.0):**
+```go
+// Без форматирования
+builder := types.NewPost("Текст поста")
+post, err := client.Posts.Create(ctx, builder, filePaths...)
+
+// С форматированием
+builder := types.NewPost("Go is awesome! I love Go programming.").
+    Bold("Go").        // Выделит все вхождения слова "Go"
+    Italic("awesome"). // Курсив для "awesome"
+    Underline("love")  // Подчёркивание для "love"
+post, err := client.Posts.Create(ctx, builder, filePaths...)
+```
+
+**Важно**: 
+- Форматирование применяется только к **целым словам**
+- Если слово повторяется в тексте, форматирование применится ко **всем вхождениям**
+- Части слов не форматируются: `NewPost("category").Bold("cat")` не применит форматирование
+
+#### Создание итераторов
+
+**Было (0.3.1):**
+```go
+ctx := context.Background()
+feedIter := client.Posts.NewFeed(ctx, types.FeedTabPopular, 20)
+userIter := client.Posts.NewUserPosts(ctx, "username", 20)
+commentIter := client.Comments.NewCommentList(ctx, postID, 20)
+
+for feedIter.HasMore() {
+    posts, err := feedIter.Next(ctx)
+    // ...
+}
+```
+
+**Стало (0.4.0):**
+```go
+// Контекст НЕ передаётся в конструктор
+feedIter := client.Posts.NewFeed(types.FeedTabPopular, 20)
+userIter := client.Posts.NewUserPosts("username", 20)
+commentIter := client.Comments.NewCommentList(postID, 20)
+
+// Контекст передаётся только в Next()
+for feedIter.HasMore() {
+    posts, err := feedIter.Next(context.Background())
+    // ...
+}
+```
+
+**Примечание:** Это изменение делает API более идиоматичным для Go - контекст передаётся только туда, где он реально используется (при выполнении HTTP запроса в `Next()`). Каждый вызов `Next()` может использовать свой контекст с разными таймаутами или условиями отмены.
+
+#### Использование модуля уведомлений
+
+**Новая функциональность (0.4.0):**
+```go
+// Создание итератора уведомлений
+iter := client.Notifications.NewIterator(20)
+
+for iter.HasMore() {
+    notifications, err := iter.Next(context.Background())
+    if err != nil {
+        log.Fatal(err)
+    }
+    
+    for _, notif := range notifications {
+        fmt.Printf("[%s] %s: %s\n", 
+            notif.Type, 
+            notif.Actor.DisplayName, 
+            notif.Preview)
+    }
+}
+```
+
+---
+
 ## [0.3.1] - 2026-04-26
 
 ### Добавлено

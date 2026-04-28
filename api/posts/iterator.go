@@ -21,7 +21,7 @@ type FeedIterator interface {
 }
 
 // newFeedIterator создаёт итератор для получения ленты постов.
-func newFeedIterator(ctx context.Context, s *Service, tab types.FeedTab, limit int) FeedIterator {
+func newFeedIterator(s *Service, tab types.FeedTab, limit int) FeedIterator {
 	fetch := func(ctx context.Context, token iterator.PageToken) ([]*types.Post, iterator.PageToken, bool, error) {
 		result, err := s.getFeed(ctx, tab, token.Cursor, limit)
 		if err != nil {
@@ -35,7 +35,7 @@ func newFeedIterator(ctx context.Context, s *Service, tab types.FeedTab, limit i
 }
 
 // newUserPostsIterator создаёт итератор для получения постов пользователя.
-func newUserPostsIterator(ctx context.Context, s *Service, username string, limit int) FeedIterator {
+func newUserPostsIterator(s *Service, username string, limit int) FeedIterator {
 	fetch := func(ctx context.Context, token iterator.PageToken) ([]*types.Post, iterator.PageToken, bool, error) {
 		result, err := s.getUserPosts(ctx, username, limit, token.Cursor)
 		if err != nil {

@@ -7,30 +7,25 @@ import (
 	"log"
 	"os"
 
-	"github.com/joho/godotenv"
+	_ "github.com/joho/godotenv/autoload"
 	"github.com/k0kubun/pp"
 	itdgo "github.com/slipynil/itd-go"
 	"github.com/slipynil/itd-go/types"
 )
 
 func main() {
-	godotenv.Load()
-	token := os.Getenv("REFRESH_TOKEN")
-	userAgent := os.Getenv("USER_AGENT")
-
-	cfg := itdgo.Config{
-		RefreshToken: token,
-		UserAgent:    userAgent,
-	}
-
 	ctx := context.Background()
+	cfg := itdgo.Config{
+		RefreshToken: os.Getenv("REFRESH_TOKEN"),
+		UserAgent:    os.Getenv("USER_AGENT"),
+	}
 
 	client, err := itdgo.New(ctx, cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	feed := client.Posts.NewFeed(ctx, types.FeedTabPopular, 1)
+	feed := client.Posts.NewFeed(types.FeedTabPopular, 1)
 	posts, err := feed.Next(ctx)
 	if err != nil {
 		log.Fatal(err)
@@ -41,7 +36,7 @@ func main() {
 	pp.Printf("Автор поста: %s\n", firstPost.Author.DisplayName)
 	pp.Printf("Контент: %s\n", firstPost)
 
-	iterator := client.Comments.NewCommentList(ctx, firstPost.ID, 1)
+	iterator := client.Comments.NewCommentList(firstPost.ID, 1)
 
 	for iterator.HasMore() {
 		comments, err := iterator.Next(ctx)

@@ -5,6 +5,7 @@ import "github.com/slipynil/itd-go/types"
 // createPostRequest представляет запрос на создание поста.
 type createPostRequest struct {
 	Content       string             `json:"content,omitempty"`
+	Spans         []types.Span       `json:"spans,omitempty"`
 	AttachmentIDs []string           `json:"attachmentIds,omitempty"`
 	Poll          *types.PollRequest `json:"poll,omitempty"`
 }
