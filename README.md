@@ -55,15 +55,16 @@ func main() {
 		log.Fatalf("error creating client: %s\n", err)
 	}
 
-	// Create a post with automatic file upload
-	post, err := client.Posts.Create(ctx, "Hello from itd-go!", "/path/to/image.jpg")
+	// Create a post with text formatting and automatic file upload
+	builder := types.NewPost("Hello from itd-go!").Bold("itd-go")
+	post, err := client.Posts.Create(ctx, builder, "/path/to/image.jpg")
 	if err != nil {
 		log.Fatalf("error creating post: %s\n", err)
 	}
 	fmt.Printf("Post created: %s\n", post.ID)
 
 	// Iterate through feed
-	feed := client.Posts.NewFeed(ctx, types.FeedTabPopular, 20)
+	feed := client.Posts.NewFeed(types.FeedTabPopular, 20)
 	for feed.HasMore() {
 		posts, err := feed.Next(ctx)
 		if err != nil {
@@ -99,8 +100,10 @@ type Config struct {
 ## Features
 
 - **Posts API**: создание, удаление, лайки, репосты, голосование в опросах, пагинация ленты
+- **Text Formatting**: форматирование текста постов через PostBuilder (жирный, курсив, подчёркивание, зачёркивание, спойлер, моноширинный, ссылки)
 - **User API**: профили пользователей, подписки, обновление профиля
 - **Comments API**: комментарии и ответы, лайки, редактирование, пагинация
+- **Notifications API**: получение уведомлений, пометка как прочитанных, real-time стрим через SSE
 - **Automatic File Upload**: автоматическая загрузка файлов при создании постов и комментариев
 - **Iterator Pattern**: удобная пагинация через итераторы для всех списочных методов
 - **Token Management**: автоматическое обновление access token из refresh token
@@ -117,6 +120,7 @@ type Config struct {
 - [`examples/posts/`](./examples/posts/) — работа с постами
 - [`examples/user/`](./examples/user/) — работа с пользователями
 - [`examples/comments/`](./examples/comments/) — работа с комментариями
+- [`examples/notifications/`](./examples/notifications/) — работа с уведомлениями
 
 ## License
 
