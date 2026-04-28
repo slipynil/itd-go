@@ -1,8 +1,10 @@
 package notifications
 
 import (
+	"bufio"
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/go-json-experiment/json"
 	"github.com/slipynil/itd-go/internal/transport"
@@ -142,4 +144,88 @@ func (s *Service) MarkRead(ctx context.Context, ids ...string) error {
 	defer resp.Body.Close()
 
 	return nil
+}
+
+// Stream открывает SSE соединение для получения уведомлений в реальном времени.
+// Возвращает два канала: канал уведомлений и канал ошибок.
+//
+// Параметры:
+//   - ctx: контекст для управления временем жизни стрима
+//
+// Возвращает:
+//   - <-chan *types.StreamNotification: канал для получения уведомлений
+//   - <-chan error: канал для получения ошибок (буферизован, размер 1)
+//
+// Использование:
+//
+//	stream, errs := client.Notifications.Stream(ctx)
+//	for {
+//	    select {
+//	    case n, ok := <-stream:
+//	        if !ok {
+//	            return // стрим закрыт
+//	        }
+//	        // обработка уведомления
+//	    case err := <-errs:
+//	        log.Printf("Stream error: %v", err)
+//	        return // при ошибке стрим автоматически закрывается
+//	    }
+//	}
+//
+// Примечание: при получении ошибки стрим автоматически закрывается.
+// Автоматическое переподключение не реализовано и должно выполняться на стороне клиента.
+func (s *Service) Stream(ctx context.Context) (<-chan *types.StreamNotification, <-chan error) {
+	ch := make(chan *types.StreamNotification)
+	errCh := make(chan error, 1)
+
+	go func() {
+		defer close(ch)
+		defer close(errCh)
+
+		req, err := s.transport.NewRequest(ctx, "GET", "/api/notifications/stream", nil)
+		if err != nil {
+			errCh <- err
+			return
+		}
+		req.Header.Set("Accept", "text/event-stream")
+		req.Header.Set("Cache-Control", "no-cache")
+
+		resp, err := s.transport.Do(req)
+		if err != nil {
+			errCh <- err
+			return
+		}
+		defer resp.Body.Close()
+
+		scanner := bufio.NewScanner(resp.Body)
+		var dataBuf strings.Builder
+		for scanner.Scan() {
+			line := scanner.Text()
+			if strings.HasPrefix(line, "data: ") {
+				dataBuf.WriteString(strings.TrimPrefix(line, "data: "))
+			} else if line == "" && dataBuf.Len() > 0 {
+				var result types.StreamNotification
+				if err := json.Unmarshal([]byte(dataBuf.String()), &result, transport.DataOptions); err != nil {
+					errCh <- err
+					return
+				}
+				// Пропускаем heartbeat события (keepalive от сервера без данных)
+				if result.ID == "" {
+					dataBuf.Reset()
+					continue
+				}
+				select {
+				case ch <- &result:
+				case <-ctx.Done():
+					return
+				}
+				dataBuf.Reset()
+			}
+		}
+		if err := scanner.Err(); err != nil && ctx.Err() == nil {
+			errCh <- err
+		}
+	}()
+
+	return ch, errCh
 }

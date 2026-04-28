@@ -14,8 +14,12 @@
   - `MarkAllRead(ctx)` - пометка всех непрочитанных уведомлений как прочитанных
   - `MarkNotificationsRead(ctx, notifications)` - пометка переданных уведомлений как прочитанных
   - `MarkRead(ctx, ids...)` - пометка уведомлений по ID как прочитанных
+  - `Stream(ctx)` - получение уведомлений в реальном времени через SSE (Server-Sent Events)
 - **Новый тип**: `types.Notification` - структура уведомления с полной информацией об акторе и целевом объекте
+- **Новый тип**: `types.StreamNotification` - структура уведомления из SSE стрима с дополнительными полями (`UserID`, `Sound`)
+- **Новый тип**: `types.Actor` - информация об акторе уведомления (извлечён из inline структуры)
 - **Новый пример**: `examples/notifications/readAllNotifications.go` - демонстрация получения и пометки непрочитанных уведомлений
+- **Новый пример**: `examples/notifications/streamNotifications.go` - демонстрация работы со стримом уведомлений в реальном времени
 - **Godoc комментарии**: добавлена полная документация для всех публичных типов и методов модуля notifications
 
 ### Изменено
@@ -27,10 +31,47 @@
   - `Notifications.NewIterator(ctx, limit)` → `Notifications.NewIterator(limit)`
 - **Обновлена документация**: CLAUDE.md теперь показывает правильный паттерн создания итераторов без контекста в конструкторе
 - **Обновлены примеры**: все примеры использования итераторов обновлены под новый API
+- **Рефакторинг типа `Notification`**: поле `Actor` теперь использует именованный тип `types.Actor` вместо inline структуры
+  - Устраняет дублирование кода между `Notification` и `StreamNotification`
+  - Не является breaking change - структура полей осталась идентичной
 
 ### Исправлено
 
 - **Критическая ошибка**: исправлено использование `req.Body` вместо `resp.Body` в методе `getNotifications` (приводило к чтению из пустого тела запроса)
+
+### Технические детали
+
+#### Различия между Notification и StreamNotification
+
+- `Notification.ReadAt` - `time.Time` (всегда имеет значение, может быть zero value)
+- `StreamNotification.ReadAt` - `*time.Time` (nullable, `nil` если уведомление не прочитано)
+- `StreamNotification` содержит дополнительные поля: `UserID`, `Sound`
+
+#### Использование Stream()
+
+```go
+ctx := context.Background()
+stream, errs := client.Notifications.Stream(ctx)
+
+for {
+    select {
+    case n, ok := <-stream:
+        if !ok {
+            return // стрим закрыт
+        }
+        fmt.Printf("[%s] %s: %s\n", n.Type, n.Actor.DisplayName, n.Preview)
+    case err := <-errs:
+        log.Printf("Stream error: %v", err)
+        return // при ошибке стрим автоматически закрывается
+    }
+}
+```
+
+**Важно**: 
+- Метод возвращает два канала: `<-chan *types.StreamNotification` для данных и `<-chan error` для ошибок
+- Стрим пропускает события без `ID` (heartbeat keepalive от сервера)
+- При ошибке парсинга JSON весь стрим закрывается (не resilient к невалидным событиям)
+- Автоматическое переподключение нужно реализовывать на стороне клиента
 
 ### Миграция с 0.3.1
 
