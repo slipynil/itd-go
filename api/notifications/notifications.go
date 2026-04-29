@@ -21,13 +21,13 @@ func New(t *transport.Client) *Service {
 	return &Service{transport: t}
 }
 
-// NewIterator создаёт итератор для получения уведомлений.
+// NewNotifications создаёт итератор для получения уведомлений.
 // Параметры:
 //   - limit: количество уведомлений на страницу (рекомендуется 10-20)
 //
-// Возвращает NotificationIterator для постраничной загрузки уведомлений.
-func (s *Service) NewIterator(limit int) NotificationIterator {
-	return newNotificationIterator(s, limit)
+// Возвращает Iterator для постраничной загрузки уведомлений.
+func (s *Service) NewNotifications(limit int) Iterator {
+	return newNotifications(s, limit)
 }
 
 // getNotifications получает список уведомлений с пагинацией.
@@ -62,7 +62,7 @@ func (s *Service) getNotifications(ctx context.Context, offset int, limit int) (
 //
 // Возвращает список непрочитанных уведомлений или ошибку при проблемах с сетью/API.
 func (s *Service) ListUnread(ctx context.Context) ([]*types.Notification, error) {
-	iter := s.NewIterator(20)
+	iter := s.NewNotifications(20)
 	var result []*types.Notification
 	for iter.HasMore() {
 		notifications, err := iter.Next(ctx)

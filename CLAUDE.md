@@ -46,19 +46,31 @@
 Все методы, возвращающие списки, используют паттерн Iterator:
 
 ```go
-// Универсальный интерфейс
-type Iterator[T any] interface {
+// Каждый API модуль определяет свой интерфейс Iterator
+// api/posts/iterator.go
+type Iterator interface {
     HasMore() bool
-    Next() ([]T, error)
+    Next(ctx context.Context) ([]*types.Post, error)
 }
 
-// Конкретные типы
-type FeedIterator = Iterator[*Post]
-type CommentIterator = Iterator[*Comment]
-type NotificationIterator = Iterator[*Notification]
+// api/comments/iterator.go
+type Iterator interface {
+    HasMore() bool
+    Next(ctx context.Context) ([]*types.Comment, error)
+}
+
+// api/notifications/iterator.go
+type Iterator interface {
+    HasMore() bool
+    Next(ctx context.Context) ([]*types.Notification, error)
+}
 ```
 
-**Важно:** Все итераторы возвращают **указатели** на элементы (`*Post`, `*Comment`, `*Notification`), а не значения.
+**Важно:** 
+- Все итераторы возвращают **указатели** на элементы (`*Post`, `*Comment`, `*Notification`), а не значения
+- Интерфейс `Iterator` определяется локально в каждом пакете (Go best practice)
+- Контекст передаётся только в метод `Next(ctx)`, не в конструктор
+
 
 ### 2. Аутентификация
 
@@ -410,8 +422,8 @@ import (
     "github.com/slipynil/itd-go/types"
 )
 
-// YourIterator предоставляет интерфейс для постраничной загрузки данных.
-type YourIterator interface {
+// Iterator предоставляет интерфейс для постраничной загрузки данных.
+type Iterator interface {
     // HasMore возвращает true, если есть ещё данные для загрузки.
     HasMore() bool
     // Next загружает и возвращает следующую страницу данных.
@@ -423,20 +435,32 @@ type YourIterator interface {
 
 ### 2. Создать функцию-конструктор
 
-В том же файле `internal/api/yourmodule/iterator.go`:
+В том же файле `api/yourmodule/iterator.go`:
 
 ```go
-func newYourIterator(s *Service, limit int) YourIterator {
-    fetch := func(ctx context.Context, token iterator.PageToken) ([]*types.YourType, iterator.PageToken, bool, error) {
-        result, err := s.getYourData(ctx, token.Cursor, limit)
-        if err != nil {
-            return nil, iterator.PageToken{}, false, err
+// newYourData создаёт итератор для получения ваших данных.
+// Имя функции должно описывать ЧТО итерируется.
+func newYourData(s *Service, limit int) Iterator {
+    fetch := func(ctx context.Context, token *iterator.PageToken) ([]*types.YourType, *iterator.PageToken, bool, error) {
+        cursor := ""
+        if token != nil {
+            cursor = token.Cursor
         }
-        next := iterator.PageToken{Cursor: result.NextCursor}
+
+        result, err := s.getYourData(ctx, cursor, limit)
+        if err != nil {
+            return nil, nil, false, err
+        }
+
+        var next *iterator.PageToken
+        if result.HasMore {
+            next = &iterator.PageToken{Cursor: result.NextCursor}
+        }
+
         return result.Items, next, result.HasMore, nil
     }
     
-    return iterator.New[*types.YourType](fetch, iterator.PageToken{})
+    return iterator.New[*types.YourType](fetch, nil)
 }
 ```
 
@@ -445,15 +469,17 @@ func newYourIterator(s *Service, limit int) YourIterator {
 В файле `api/yourmodule/yourmodule.go`:
 
 ```go
-func (s *Service) NewYourIterator(limit int) YourIterator {
-    return newYourIterator(s, limit)
+// NewYourData создаёт итератор для получения ваших данных.
+// Имя метода должно описывать ЧТО итерируется.
+func (s *Service) NewYourData(limit int) Iterator {
+    return newYourData(s, limit)
 }
 ```
 
 ### 4. Использование итератора
 
 ```go
-iter := service.NewYourIterator(20)
+iter := service.NewYourData(20)
 
 for iter.HasMore() {
     items, err := iter.Next(context.Background())
@@ -468,6 +494,9 @@ for iter.HasMore() {
 - Контекст передаётся только в метод `Next(ctx)` при каждом вызове
 - Не передавайте контекст в конструктор итератора - он там не используется
 - Не храните контекст в структуре итератора (антипатерн в Go)
+- `PageToken` используется как указатель: `nil` = первый запрос, `&PageToken{...}` = есть cursor
+- Интерфейс всегда называется просто `Iterator` (в каждом пакете свой)
+- Имена методов и функций должны описывать ЧТО итерируется (NewHashtagPosts, NewPostComments, NewNotifications)
 ```
 
 ## Структура проекта

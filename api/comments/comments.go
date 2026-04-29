@@ -24,14 +24,14 @@ func New(t *transport.Client) *Service {
 	return &Service{transport: t}
 }
 
-// NewCommentList создаёт итератор для получения комментариев к посту.
+// NewPostComments создаёт итератор для получения комментариев к посту.
 // Параметры:
 //   - postID: идентификатор поста
 //   - limit: количество комментариев на страницу (рекомендуется 10-20)
 //
-// Возвращает CommentIterator для постраничной загрузки комментариев.
-func (s *Service) NewCommentList(postID string, limit int) CommentIterator {
-	return commentListIterator(s, postID, limit)
+// Возвращает Iterator для постраничной загрузки комментариев.
+func (s *Service) NewPostComments(postID string, limit int) Iterator {
+	return newPostComments(s, postID, limit)
 }
 
 // ListReplies получает список ответов на комментарий.

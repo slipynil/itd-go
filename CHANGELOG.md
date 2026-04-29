@@ -2,6 +2,91 @@
 
 Все значимые изменения в проекте будут документированы в этом файле.
 
+## [0.5.0] - 2026-04-29
+
+### Изменено
+
+- **BREAKING**: Рефакторинг базового итератора - `PageToken` теперь используется как указатель (`*PageToken`)
+  - `nil` означает первый запрос без токена пагинации
+  - `&PageToken{Cursor: "..."}` означает наличие курсора для следующей страницы
+  - Это исправляет проблему невозможности отличить "первый запрос" от "пустой курсор"
+  - Все итераторы теперь корректно обрабатывают пагинацию с cursor
+
+- **BREAKING**: Переименование интерфейсов итераторов для единообразия
+  - `posts.FeedIterator` → `posts.Iterator`
+  - `comments.CommentIterator` → `comments.Iterator`
+  - `notifications.NotificationIterator` → `notifications.Iterator`
+  - `search.Iterator` остался без изменений
+
+- **BREAKING**: Переименование методов создания итераторов для большей ясности
+  - `Search.NewHashtagFeed(hashtag, limit)` → `Search.NewHashtagPosts(hashtag, limit)`
+  - `Comments.NewCommentList(postID, limit)` → `Comments.NewPostComments(postID, limit)`
+  - `Notifications.NewIterator(limit)` → `Notifications.NewNotifications(limit)`
+  - `Posts.NewFeed()` и `Posts.NewUserPosts()` остались без изменений
+
+### Исправлено
+
+- **Критическая ошибка в api/search**: метод `getHashtagFeed` теперь корректно использует cursor для пагинации
+  - Ранее всегда запрашивалась только первая страница
+  - Теперь cursor передаётся в URL параметрах при наличии
+
+- **Критическая ошибка в api/comments**: метод `getCommentList` теперь корректно использует cursor для пагинации
+  - Ранее cursor игнорировался в URL
+  - Теперь cursor добавляется в query параметры при наличии
+
+### Улучшено
+
+- Все итераторы теперь возвращают `nil` вместо пустого `PageToken{}` когда данных больше нет
+- Улучшена документация (godoc) для всех методов итераторов
+- Обновлены все примеры использования под новые имена методов
+
+### Миграция с 0.4.0
+
+#### Переименование методов итераторов
+
+**Было (0.4.0):**
+```go
+// Search
+iter, err := client.Search.NewHashtagFeed("golang", 20)
+
+// Comments
+iter := client.Comments.NewCommentList(postID, 20)
+
+// Notifications
+iter := client.Notifications.NewIterator(20)
+```
+
+**Стало (0.5.0):**
+```go
+// Search - более явное имя, указывает что возвращаются посты
+iter, err := client.Search.NewHashtagPosts("golang", 20)
+
+// Comments - явно указывает что это комментарии к посту
+iter := client.Comments.NewPostComments(postID, 20)
+
+// Notifications - явно указывает что возвращаются уведомления
+iter := client.Notifications.NewNotifications(20)
+```
+
+#### Использование итераторов
+
+**Использование осталось прежним:**
+```go
+iter := client.Posts.NewFeed(types.FeedTabPopular, 20)
+
+for iter.HasMore() {
+    posts, err := iter.Next(context.Background())
+    if err != nil {
+        log.Fatal(err)
+    }
+    // обработка posts
+}
+```
+
+**Примечание:** Внутренние изменения в базовом итераторе не влияют на публичный API. Все итераторы работают так же, как и раньше, но теперь корректно обрабатывают пагинацию.
+
+---
+
 ## [0.4.0] - 2026-04-27
 
 ### Добавлено

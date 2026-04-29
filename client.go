@@ -9,6 +9,7 @@ import (
 	"github.com/slipynil/itd-go/api/comments"
 	"github.com/slipynil/itd-go/api/notifications"
 	"github.com/slipynil/itd-go/api/posts"
+	"github.com/slipynil/itd-go/api/search"
 	"github.com/slipynil/itd-go/api/user"
 	"github.com/slipynil/itd-go/internal/root"
 )
@@ -36,6 +37,9 @@ type Client struct {
 
 	// Notifications - API для работы с уведомлениями
 	Notifications *notifications.Service
+
+	// Search - API для работы с поиском
+	Search *search.Service
 }
 
 // New создаёт и инициализирует новый экземпляр ITD клиента.
@@ -68,6 +72,7 @@ func New(ctx context.Context, cfg Config) (*Client, error) {
 		User:          root.User,
 		Comments:      root.Comments,
 		Notifications: root.Notifications,
+		Search:        root.Search,
 	}, nil
 }
 

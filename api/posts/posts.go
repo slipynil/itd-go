@@ -29,9 +29,9 @@ func New(t *transport.Client) *Service {
 //   - tab: тип сортировки ("popular", "clan", "following")
 //   - limit: количество постов на страницу (рекомендуется 10-50)
 //
-// Возвращает FeedIterator для постраничной загрузки постов.
-func (s *Service) NewFeed(tab types.FeedTab, limit int) FeedIterator {
-	return newFeedIterator(s, tab, limit)
+// Возвращает Iterator для постраничной загрузки постов.
+func (s *Service) NewFeed(tab types.FeedTab, limit int) Iterator {
+	return newFeed(s, tab, limit)
 }
 
 // NewUserPosts создаёт итератор для получения постов пользователя.
@@ -39,9 +39,9 @@ func (s *Service) NewFeed(tab types.FeedTab, limit int) FeedIterator {
 //   - username: имя пользователя (без @)
 //   - limit: количество постов на страницу (рекомендуется 10-50)
 //
-// Возвращает FeedIterator для постраничной загрузки постов пользователя.
-func (s *Service) NewUserPosts(username string, limit int) FeedIterator {
-	return newUserPostsIterator(s, username, limit)
+// Возвращает Iterator для постраничной загрузки постов пользователя.
+func (s *Service) NewUserPosts(username string, limit int) Iterator {
+	return newUserPosts(s, username, limit)
 }
 
 // Get получает пост по его ID.
@@ -384,4 +384,50 @@ func validatePostFiles(paths []string) error {
 		}
 	}
 	return nil
+}
+
+// getFeed возвращает ленту постов с пагинацией.
+// Используется внутри итератора для загрузки страниц.
+func (s *Service) getFeed(ctx context.Context, tab types.FeedTab, cursor string, limit int) (*FeedData, error) {
+	path := fmt.Sprintf("/api/posts?limit=%d&tab=%v&cursor=%s", limit, tab, cursor)
+	req, err := s.transport.NewRequest(ctx, "GET", path, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := s.transport.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var result responseFeed
+	if err := json.UnmarshalRead(resp.Body, &result, transport.DataOptions); err != nil {
+		return nil, err
+	}
+
+	return &result.Data, nil
+}
+
+// getUserPosts возвращает посты пользователя с пагинацией.
+// Используется внутри итератора для загрузки страниц.
+func (s *Service) getUserPosts(ctx context.Context, username string, limit int, cursor string) (*FeedData, error) {
+	path := fmt.Sprintf("/api/posts/user/%s?limit=%d&sort=new&cursor=%s", username, limit, cursor)
+	req, err := s.transport.NewRequest(ctx, "GET", path, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := s.transport.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var result responseFeed
+	if err := json.UnmarshalRead(resp.Body, &result, transport.DataOptions); err != nil {
+		return nil, err
+	}
+
+	return &result.Data, nil
 }
