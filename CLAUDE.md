@@ -81,7 +81,32 @@ SDK использует refresh token из cookies браузера:
 3. Access token добавляется к каждому запросу через middleware
 4. При истечении токена происходит автоматическое обновление
 
-### 3. Автоматическая загрузка файлов
+### 3. Автоматическая обработка rate limiting (429)
+
+SDK автоматически повторяет запросы при получении ошибки 429 (Too Many Requests):
+
+1. При ошибке 429 SDK автоматически повторяет запрос
+2. Используется exponential backoff: 1s → 2s → 4s → 8s
+3. По умолчанию 3 попытки с начальной задержкой 1 секунда
+4. Можно настроить через `Config.MaxRetries` и `Config.RetryDelay`
+
+```go
+cfg := itdgo.Config{
+    RefreshToken: "your_token",
+    MaxRetries:   5,                    // 5 попыток вместо 3
+    RetryDelay:   2 * time.Second,      // начальная задержка 2 секунды
+}
+
+// Для отключения retry логики установите MaxRetries = 0
+cfg := itdgo.Config{
+    RefreshToken: "your_token",
+    MaxRetries:   0,  // отключить автоматические повторы
+}
+```
+
+**Важно:** Retry применяется только к ошибкам 429. Другие ошибки (401, 404, 5xx) возвращаются немедленно без повторов.
+
+### 4. Автоматическая загрузка файлов
 
 SDK автоматически загружает файлы на сервер при создании постов и комментариев:
 
@@ -102,7 +127,46 @@ post, err := client.Posts.Create(ctx, "Контент", "/path/to/image.jpg")
 
 **Важно:** Методы `Create`, `CreateWithPoll`, `CreateComment`, `CreateReply` принимают `filePaths ...string`, а не `attachmentIDs`.
 
-### 4. Типы и интерфейсы
+### 5. Десериализация дат с transport.DataOptions
+
+**Критически важно:** Все методы, которые десериализуют типы с полями `time.Time`, **обязаны** использовать `transport.DataOptions`.
+
+`DataOptions` содержит кастомный unmarshaler для `time.Time`, который поддерживает несколько форматов дат от API:
+- RFC3339 (ISO8601): `2024-01-15T10:30:00Z`
+- С микросекундами: `2024-01-15 10:30:00.123456+03`
+- Без микросекунд: `2024-01-15 10:30:00+03`
+
+```go
+// ✅ ПРАВИЛЬНО - используется DataOptions
+var result types.Post
+if err := json.UnmarshalRead(resp.Body, &result, transport.DataOptions); err != nil {
+    return nil, err
+}
+
+// ❌ НЕПРАВИЛЬНО - даты могут распарситься некорректно
+var result types.Post
+if err := json.UnmarshalRead(resp.Body, &result); err != nil {
+    return nil, err
+}
+```
+
+**Типы, требующие DataOptions:**
+- `types.Post` (CreatedAt, EditedAt)
+- `types.CreatedPost*` (CreatedAt)
+- `types.Comment` (CreatedAt)
+- `types.CreatedComment` (CreatedAt)
+- `types.CommentUpdate` (UpdatedAt)
+- `types.User`, `types.Me` (CreatedAt)
+- `types.UpdateProfileResponse` (UpdatedAt)
+- `types.Notification` (CreatedAt, ReadAt)
+- `types.StreamNotification` (CreatedAt, ReadAt)
+
+**Типы, НЕ требующие DataOptions:**
+- `types.Attachment` (нет полей с датами)
+- `types.UserCompact` (нет полей с датами)
+- `types.Hashtag`, `types.SearchResult` (нет полей с датами)
+
+### 6. Типы и интерфейсы
 
 - **types/** — публичные типы и интерфейсы API
 - **internal/dto/** — внутренние DTO для парсинга ответов API

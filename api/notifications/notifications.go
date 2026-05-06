@@ -47,7 +47,7 @@ func (s *Service) getNotifications(ctx context.Context, offset int, limit int) (
 	defer resp.Body.Close()
 
 	var result notificationResponse
-	if err := json.UnmarshalRead(resp.Body, &result); err != nil {
+	if err := json.UnmarshalRead(resp.Body, &result, transport.DataOptions); err != nil {
 		return nil, err
 	}
 

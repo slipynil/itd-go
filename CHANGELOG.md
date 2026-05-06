@@ -34,6 +34,13 @@
   - Ранее cursor игнорировался в URL
   - Теперь cursor добавляется в query параметры при наличии
 
+- **Критическая ошибка десериализации дат**: добавлен `transport.DataOptions` в 8 методов для корректного парсинга полей `time.Time`
+  - `api/user/user.go`: методы `Me()`, `Get()`, `UpdateProfile()`
+  - `api/notifications/notifications.go`: метод `getNotifications()`
+  - `api/comments/comments.go`: методы `getReplyList()`, `CreateComment()`, `CreateReply()`, `Update()`
+  - Без `DataOptions` даты могли парситься некорректно в зависимости от формата ответа API
+  - Теперь все методы, работающие с датами, используют кастомный unmarshaler для `time.Time`
+
 ### Улучшено
 
 - Все итераторы теперь возвращают `nil` вместо пустого `PageToken{}` когда данных больше нет
