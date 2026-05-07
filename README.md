@@ -94,6 +94,8 @@ type Config struct {
 	UserAgent     string        // опционально: User-Agent для запросов
 	Timeout       time.Duration // опционально: таймаут HTTP запросов (по умолчанию 30s)
 	WithoutBanner bool          // опционально: отключить баннер при инициализации
+	MaxRetries    int           // опционально: количество повторов при ошибке 429 (по умолчанию 3, 0 = отключить)
+	RetryDelay    time.Duration // опционально: начальная задержка для retry с exponential backoff (по умолчанию 1s)
 }
 ```
 
@@ -105,10 +107,35 @@ type Config struct {
 - **Comments API**: комментарии и ответы, лайки, редактирование, пагинация
 - **Notifications API**: получение уведомлений, пометка как прочитанных, real-time стрим через SSE
 - **Automatic File Upload**: автоматическая загрузка файлов при создании постов и комментариев
+- **Automatic Rate Limiting**: автоматическая обработка ошибок 429 с exponential backoff
 - **Iterator Pattern**: удобная пагинация через итераторы для всех списочных методов
 - **Token Management**: автоматическое обновление access token из refresh token
 
 Полный список методов доступен в [документации](https://pkg.go.dev/github.com/slipynil/itd-go).
+
+### Real-time Notifications Stream
+
+```go
+// Получение уведомлений в реальном времени через SSE
+stream, errs := client.Notifications.Stream(ctx)
+
+for {
+	select {
+	case notification, ok := <-stream:
+		if !ok {
+			return // стрим закрыт
+		}
+		fmt.Printf("[%s] %s: %s\n", 
+			notification.Type, 
+			notification.Actor.DisplayName, 
+			notification.Preview)
+		
+	case err := <-errs:
+		log.Printf("Stream error: %v", err)
+		return // при ошибке стрим автоматически закрывается
+	}
+}
+```
 
 ## Go Version Support
 
