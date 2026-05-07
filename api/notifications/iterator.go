@@ -7,8 +7,8 @@ import (
 	"github.com/slipynil/itd-go/types"
 )
 
-// NotificationIterator предоставляет интерфейс для постраничной загрузки уведомлений.
-type NotificationIterator interface {
+// Iterator предоставляет интерфейс для постраничной загрузки уведомлений.
+type Iterator interface {
 	// HasMore возвращает true, если есть ещё данные для загрузки.
 	HasMore() bool
 	// Next загружает и возвращает следующую страницу уведомлений.
@@ -17,15 +17,29 @@ type NotificationIterator interface {
 	Next(ctx context.Context) ([]*types.Notification, error)
 }
 
-func newNotificationIterator(s *Service, limit int) NotificationIterator {
-	fetch := func(ctx context.Context, token iterator.PageToken) ([]*types.Notification, iterator.PageToken, bool, error) {
-		result, err := s.getNotifications(ctx, token.Offset, limit)
-		if err != nil {
-			return nil, iterator.PageToken{}, false, err
+// newNotifications создаёт итератор для получения уведомлений.
+// Параметры:
+//   - s: сервис для работы с API уведомлений
+//   - limit: количество уведомлений на страницу
+func newNotifications(s *Service, limit int) Iterator {
+	fetch := func(ctx context.Context, token *iterator.PageToken) ([]*types.Notification, *iterator.PageToken, bool, error) {
+		offset := 0
+		if token != nil {
+			offset = token.Offset
 		}
-		next := iterator.PageToken{Offset: token.Offset + limit}
+
+		result, err := s.getNotifications(ctx, offset, limit)
+		if err != nil {
+			return nil, nil, false, err
+		}
+
+		var next *iterator.PageToken
+		if result.HasMore {
+			next = &iterator.PageToken{Offset: offset + limit}
+		}
+
 		return result.Notifications, next, result.HasMore, nil
 	}
 
-	return iterator.New[*types.Notification](fetch, iterator.PageToken{})
+	return iterator.New[*types.Notification](fetch, nil)
 }

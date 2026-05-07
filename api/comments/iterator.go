@@ -10,8 +10,8 @@ import (
 	"github.com/slipynil/itd-go/types"
 )
 
-// CommentIterator предоставляет интерфейс для постраничной загрузки комментариев.
-type CommentIterator interface {
+// Iterator предоставляет интерфейс для постраничной загрузки комментариев.
+type Iterator interface {
 	// HasMore возвращает true, если есть ещё данные для загрузки.
 	HasMore() bool
 	// Next загружает и возвращает следующую страницу комментариев.
@@ -20,22 +20,41 @@ type CommentIterator interface {
 	Next(ctx context.Context) ([]*types.Comment, error)
 }
 
-func commentListIterator(s *Service, postID string, limit int) CommentIterator {
-	fetch := func(ctx context.Context, token iterator.PageToken) ([]*types.Comment, iterator.PageToken, bool, error) {
-		result, err := s.getCommentList(ctx, postID, token.Cursor, limit)
-		if err != nil {
-			return nil, iterator.PageToken{}, false, err
+// newPostComments создаёт итератор для получения комментариев к посту.
+// Параметры:
+//   - s: сервис для работы с API комментариев
+//   - postID: идентификатор поста
+//   - limit: количество комментариев на страницу
+func newPostComments(s *Service, postID string, limit int) Iterator {
+	fetch := func(ctx context.Context, token *iterator.PageToken) ([]*types.Comment, *iterator.PageToken, bool, error) {
+		cursor := ""
+		if token != nil {
+			cursor = token.Cursor
 		}
-		next := iterator.PageToken{Cursor: result.Data.NextCursor}
+
+		result, err := s.getCommentList(ctx, postID, cursor, limit)
+		if err != nil {
+			return nil, nil, false, err
+		}
+
+		var next *iterator.PageToken
+		if result.Data.HasMore {
+			next = &iterator.PageToken{Cursor: result.Data.NextCursor}
+		}
+
 		return result.Data.Comments, next, result.Data.HasMore, nil
 	}
 
-	return iterator.New[*types.Comment](fetch, iterator.PageToken{})
+	return iterator.New[*types.Comment](fetch, nil)
 }
 
-// getCommentList получает сырую json стурктуру с комментариями и информацией о пагинации.
+// getCommentList получает комментарии к посту с пагинацией.
+// Используется внутри итератора для загрузки страниц.
 func (s *Service) getCommentList(ctx context.Context, postID, cursor string, limit int) (*commentsResponse, error) {
 	path := fmt.Sprintf("/api/posts/%s/comments?limit=%d&sort=popular", postID, limit)
+	if cursor != "" {
+		path = fmt.Sprintf("%s&cursor=%s", path, cursor)
+	}
 
 	req, err := s.transport.NewRequest(ctx, "GET", path, nil)
 	if err != nil {

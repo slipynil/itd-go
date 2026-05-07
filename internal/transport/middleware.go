@@ -1,9 +1,12 @@
 package transport
 
 import (
+	"errors"
+	"fmt"
 	"net/http"
+	"time"
 
-	"github.com/slipynil/itd-go/errors"
+	itderrors "github.com/slipynil/itd-go/errors"
 	"github.com/slipynil/itd-go/internal/auth"
 )
 
@@ -41,9 +44,61 @@ func (m *statusCheckMiddleware) RoundTrip(req *http.Request) (*http.Response, er
 	}
 
 	// Проверяем статус ответа
-	if err := errors.CheckResponse(resp); err != nil {
+	if err := itderrors.CheckResponse(resp); err != nil {
 		return nil, err
 	}
 
 	return resp, nil
+}
+
+// retryMiddleware автоматически повторяет запросы при ошибке 429 (rate limiting).
+// Использует exponential backoff для задержки между попытками.
+type retryMiddleware struct {
+	base       http.RoundTripper
+	maxRetries int
+	baseDelay  time.Duration
+}
+
+// RoundTrip реализует интерфейс http.RoundTripper для retryMiddleware.
+func (m *retryMiddleware) RoundTrip(req *http.Request) (*http.Response, error) {
+	var lastErr error
+
+	for attempt := 0; attempt <= m.maxRetries; attempt++ {
+		// Выполняем запрос
+		resp, err := m.base.RoundTrip(req)
+
+		// Если нет ошибки или это не APIError, возвращаем результат
+		if err == nil {
+			return resp, nil
+		}
+
+		// Проверяем, является ли ошибка rate limiting (429)
+		if !errors.Is(err, itderrors.ErrRateLimited) {
+			return resp, err
+		}
+
+		lastErr = err
+
+		// Если это последняя попытка, возвращаем ошибку
+		if attempt == m.maxRetries {
+			break
+		}
+
+		// Вычисляем задержку с exponential backoff
+		delay := m.baseDelay * time.Duration(1<<uint(attempt))
+
+		fmt.Printf("[itd-go] Rate limit exceeded (429), retry %d/%d after %v\n",
+			attempt+1, m.maxRetries, delay)
+
+		// Ждём с учётом контекста
+		select {
+		case <-time.After(delay):
+			// Продолжаем следующую попытку
+		case <-req.Context().Done():
+			// Контекст отменён, прерываем retry
+			return nil, req.Context().Err()
+		}
+	}
+
+	return nil, lastErr
 }

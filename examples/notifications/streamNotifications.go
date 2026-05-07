@@ -6,6 +6,7 @@ import (
 	"context"
 	"log"
 	"os"
+	"time"
 
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/k0kubun/pp"
@@ -17,6 +18,7 @@ func main() {
 	cfg := itdgo.Config{
 		RefreshToken: os.Getenv("REFRESH_TOKEN"),
 		UserAgent:    os.Getenv("USER_AGENT"),
+		Timeout:      10 * time.Second,
 	}
 
 	client, err := itdgo.New(ctx, cfg)

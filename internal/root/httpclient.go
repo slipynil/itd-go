@@ -78,8 +78,8 @@ func defaultAuthTransport() (*http.Transport, error) {
 		TLSHandshakeTimeout:   10 * time.Second,
 		ResponseHeaderTimeout: 30 * time.Second,
 		ExpectContinueTimeout: time.Second,
-		MaxIdleConns:          100,
-		MaxIdleConnsPerHost:   50,
+		MaxIdleConns:          3,
+		MaxIdleConnsPerHost:   3,
 		IdleConnTimeout:       90 * time.Second,
 	}
 	if err := http2.ConfigureTransport(t); err != nil {

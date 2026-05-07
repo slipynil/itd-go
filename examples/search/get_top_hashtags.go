@@ -16,22 +16,16 @@ func main() {
 	ctx := context.Background()
 	cfg := itdgo.Config{
 		RefreshToken: os.Getenv("REFRESH_TOKEN"),
-		UserAgent:    os.Getenv("USERAGENT"),
+		UserAgent:    os.Getenv("USER_AGENT"),
 	}
+
 	client, err := itdgo.New(ctx, cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	iter := client.Notifications.NewNotifications(10)
-
-	for iter.HasMore() {
-		notifications, err := iter.Next(ctx)
-		if err != nil {
-			log.Fatal(err)
-		}
-		for _, notification := range notifications {
-			pp.Println(notification)
-		}
+	hashtags, err := client.Search.TopHashtags(ctx, 5)
+	if err != nil {
+		log.Fatal(err)
 	}
+	pp.Println(hashtags)
 }

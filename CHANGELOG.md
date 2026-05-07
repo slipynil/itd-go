@@ -2,6 +2,123 @@
 
 Все значимые изменения в проекте будут документированы в этом файле.
 
+## [0.5.0] - 2026-05-07
+
+### Добавлено
+
+- **Автоматическая обработка rate limiting (429)**: SDK теперь автоматически повторяет запросы при ошибке 429
+  - Используется exponential backoff: 1s → 2s → 4s → 8s
+  - По умолчанию 3 попытки с начальной задержкой 1 секунда
+  - Настраивается через `Config.MaxRetries` и `Config.RetryDelay`
+  - Установите `MaxRetries = 0` для отключения retry логики
+  - Retry применяется только к ошибкам 429, другие ошибки возвращаются немедленно
+
+- **Search API**: новый метод `Query(ctx, query)` для поиска пользователей и хештегов
+  - Возвращает `*types.SearchResult` с массивами `Users` и `Hashtags`
+  - Добавлены новые типы: `types.UserQueryResult` и `types.SearchResult`
+
+### Изменено
+
+- **BREAKING**: Рефакторинг базового итератора - `PageToken` теперь используется как указатель (`*PageToken`)
+  - `nil` означает первый запрос без токена пагинации
+  - `&PageToken{Cursor: "..."}` означает наличие курсора для следующей страницы
+  - Это исправляет проблему невозможности отличить "первый запрос" от "пустой курсор"
+  - Все итераторы теперь корректно обрабатывают пагинацию с cursor
+
+- **BREAKING**: Переименование интерфейсов итераторов для единообразия
+  - `posts.FeedIterator` → `posts.Iterator`
+  - `comments.CommentIterator` → `comments.Iterator`
+  - `notifications.NotificationIterator` → `notifications.Iterator`
+  - `search.Iterator` остался без изменений
+
+- **BREAKING**: Переименование методов создания итераторов для большей ясности
+  - `Search.NewHashtagFeed(hashtag, limit)` → `Search.NewHashtagPosts(hashtag, limit)`
+  - `Comments.NewCommentList(postID, limit)` → `Comments.NewPostComments(postID, limit)`
+  - `Notifications.NewIterator(limit)` → `Notifications.NewNotifications(limit)`
+  - `Posts.NewFeed()` и `Posts.NewUserPosts()` остались без изменений
+
+- **BREAKING**: `Search.TopClans()` переименован в `Search.Top10Clans()` для большей ясности
+
+- **Оптимизация HTTP клиента**: уменьшены лимиты пула соединений
+  - `MaxIdleConns`: 100 → 3
+  - `MaxIdleConnsPerHost`: 50 → 3
+  - Снижает потребление ресурсов для типичных сценариев использования
+
+### Исправлено
+
+- **Критическая ошибка в api/search**: метод `getHashtagFeed` теперь корректно использует cursor для пагинации
+  - Ранее всегда запрашивалась только первая страница
+  - Теперь cursor передаётся в URL параметрах при наличии
+  - Добавлен `transport.DataOptions` для корректной десериализации дат в постах
+
+- **Критическая ошибка в api/comments**: метод `getCommentList` теперь корректно использует cursor для пагинации
+  - Ранее cursor игнорировался в URL
+  - Теперь cursor добавляется в query параметры при наличии
+
+- **Критическая ошибка десериализации дат**: добавлен `transport.DataOptions` в 8 методов для корректного парсинга полей `time.Time`
+  - `api/user/user.go`: методы `Me()`, `Get()`, `UpdateProfile()`
+  - `api/notifications/notifications.go`: метод `getNotifications()`
+  - `api/comments/comments.go`: методы `getReplyList()`, `CreateComment()`, `CreateReply()`, `Update()`
+  - Без `DataOptions` даты могли парситься некорректно в зависимости от формата ответа API
+  - Теперь все методы, работающие с датами, используют кастомный unmarshaler для `time.Time`
+
+- **Утечка ресурсов**: добавлен `defer resp.Body.Close()` в `errors.CheckResponse()`
+  - Ранее response body не закрывался при ошибках HTTP
+  - Могло приводить к утечке соединений при частых ошибках
+
+### Улучшено
+
+- Все итераторы теперь возвращают `nil` вместо пустого `PageToken{}` когда данных больше нет
+- Улучшена документация (godoc) для всех методов итераторов
+- Обновлены все примеры использования под новые имена методов
+
+### Миграция с 0.4.0
+
+#### Переименование методов итераторов
+
+**Было (0.4.0):**
+```go
+// Search
+iter, err := client.Search.NewHashtagFeed("golang", 20)
+
+// Comments
+iter := client.Comments.NewCommentList(postID, 20)
+
+// Notifications
+iter := client.Notifications.NewIterator(20)
+```
+
+**Стало (0.5.0):**
+```go
+// Search - более явное имя, указывает что возвращаются посты
+iter, err := client.Search.NewHashtagPosts("golang", 20)
+
+// Comments - явно указывает что это комментарии к посту
+iter := client.Comments.NewPostComments(postID, 20)
+
+// Notifications - явно указывает что возвращаются уведомления
+iter := client.Notifications.NewNotifications(20)
+```
+
+#### Использование итераторов
+
+**Использование осталось прежним:**
+```go
+iter := client.Posts.NewFeed(types.FeedTabPopular, 20)
+
+for iter.HasMore() {
+    posts, err := iter.Next(context.Background())
+    if err != nil {
+        log.Fatal(err)
+    }
+    // обработка posts
+}
+```
+
+**Примечание:** Внутренние изменения в базовом итераторе не влияют на публичный API. Все итераторы работают так же, как и раньше, но теперь корректно обрабатывают пагинацию.
+
+---
+
 ## [0.4.0] - 2026-04-27
 
 ### Добавлено

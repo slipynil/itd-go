@@ -36,7 +36,7 @@ func main() {
 	pp.Printf("Автор поста: %s\n", firstPost.Author.DisplayName)
 	pp.Printf("Контент: %s\n", firstPost)
 
-	iterator := client.Comments.NewCommentList(firstPost.ID, 1)
+	iterator := client.Comments.NewPostComments(firstPost.ID, 1)
 
 	for iterator.HasMore() {
 		comments, err := iterator.Next(ctx)

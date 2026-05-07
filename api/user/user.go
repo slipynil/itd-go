@@ -39,7 +39,7 @@ func (s *Service) Me(ctx context.Context) (*types.Me, error) {
 
 	var result types.Me
 
-	if err := json.UnmarshalRead(resp.Body, &result); err != nil {
+	if err := json.UnmarshalRead(resp.Body, &result, transport.DataOptions); err != nil {
 		return nil, err
 	}
 
@@ -67,7 +67,7 @@ func (s *Service) Get(ctx context.Context, username string) (*types.User, error)
 
 	var result types.User
 
-	if err := json.UnmarshalRead(resp.Body, &result); err != nil {
+	if err := json.UnmarshalRead(resp.Body, &result, transport.DataOptions); err != nil {
 		return nil, err
 	}
 
@@ -153,7 +153,7 @@ func (s *Service) UpdateProfile(ctx context.Context, config types.UpdateProfile)
 
 	var result types.UpdateProfileResponse
 
-	if err := json.UnmarshalRead(resp.Body, &result); err != nil {
+	if err := json.UnmarshalRead(resp.Body, &result, transport.DataOptions); err != nil {
 		return nil, err
 	}
 

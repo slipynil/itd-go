@@ -24,14 +24,14 @@ func New(t *transport.Client) *Service {
 	return &Service{transport: t}
 }
 
-// NewCommentList создаёт итератор для получения комментариев к посту.
+// NewPostComments создаёт итератор для получения комментариев к посту.
 // Параметры:
 //   - postID: идентификатор поста
 //   - limit: количество комментариев на страницу (рекомендуется 10-20)
 //
-// Возвращает CommentIterator для постраничной загрузки комментариев.
-func (s *Service) NewCommentList(postID string, limit int) CommentIterator {
-	return commentListIterator(s, postID, limit)
+// Возвращает Iterator для постраничной загрузки комментариев.
+func (s *Service) NewPostComments(postID string, limit int) Iterator {
+	return newPostComments(s, postID, limit)
 }
 
 // ListReplies получает список ответов на комментарий.
@@ -65,7 +65,7 @@ func (s *Service) getReplyList(ctx context.Context, commentID string, limit int)
 
 	var result repliesResponse
 
-	if err := json.UnmarshalRead(resp.Body, &result); err != nil {
+	if err := json.UnmarshalRead(resp.Body, &result, transport.DataOptions); err != nil {
 		return nil, err
 	}
 
@@ -114,7 +114,7 @@ func (s *Service) CreateComment(ctx context.Context, postID string, content stri
 	defer resp.Body.Close()
 
 	var result types.CreatedComment
-	if err := json.UnmarshalRead(resp.Body, &result); err != nil {
+	if err := json.UnmarshalRead(resp.Body, &result, transport.DataOptions); err != nil {
 		return nil, err
 	}
 
@@ -174,7 +174,7 @@ func (s *Service) CreateReply(
 	defer resp.Body.Close()
 
 	var result types.CreatedComment
-	if err := json.UnmarshalRead(resp.Body, &result); err != nil {
+	if err := json.UnmarshalRead(resp.Body, &result, transport.DataOptions); err != nil {
 		return nil, err
 	}
 
@@ -276,7 +276,7 @@ func (s *Service) Update(ctx context.Context, commentID string, content string) 
 	defer resp.Body.Close()
 
 	var result types.CommentUpdate
-	if err := json.UnmarshalRead(resp.Body, &result); err != nil {
+	if err := json.UnmarshalRead(resp.Body, &result, transport.DataOptions); err != nil {
 		return nil, err
 	}
 

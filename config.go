@@ -22,4 +22,13 @@ type Config struct {
 	// WithoutBanner - если true, баннер SDK не будет выведен при инициализации.
 	// По умолчанию false (баннер выводится).
 	WithoutBanner bool
+
+	// MaxRetries - максимальное количество повторных попыток при ошибке 429 (rate limiting).
+	// По умолчанию 3. Установите 0 для отключения retry логики.
+	MaxRetries int
+
+	// RetryDelay - начальная задержка перед первой повторной попыткой.
+	// Используется exponential backoff: delay, delay*2, delay*4, и т.д.
+	// По умолчанию 1 секунда.
+	RetryDelay time.Duration
 }

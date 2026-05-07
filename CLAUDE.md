@@ -4,7 +4,7 @@
 
 **itd-go** — неофициальный Go SDK для работы с API социальной сети [итд.com](https://итд.com).
 
-Версия: 0.2.0  
+Версия: 0.5.0  
 Язык: Go 1.26+
 
 ## Архитектура
@@ -46,19 +46,31 @@
 Все методы, возвращающие списки, используют паттерн Iterator:
 
 ```go
-// Универсальный интерфейс
-type Iterator[T any] interface {
+// Каждый API модуль определяет свой интерфейс Iterator
+// api/posts/iterator.go
+type Iterator interface {
     HasMore() bool
-    Next() ([]T, error)
+    Next(ctx context.Context) ([]*types.Post, error)
 }
 
-// Конкретные типы
-type FeedIterator = Iterator[*Post]
-type CommentIterator = Iterator[*Comment]
-type NotificationIterator = Iterator[*Notification]
+// api/comments/iterator.go
+type Iterator interface {
+    HasMore() bool
+    Next(ctx context.Context) ([]*types.Comment, error)
+}
+
+// api/notifications/iterator.go
+type Iterator interface {
+    HasMore() bool
+    Next(ctx context.Context) ([]*types.Notification, error)
+}
 ```
 
-**Важно:** Все итераторы возвращают **указатели** на элементы (`*Post`, `*Comment`, `*Notification`), а не значения.
+**Важно:** 
+- Все итераторы возвращают **указатели** на элементы (`*Post`, `*Comment`, `*Notification`), а не значения
+- Интерфейс `Iterator` определяется локально в каждом пакете (Go best practice)
+- Контекст передаётся только в метод `Next(ctx)`, не в конструктор
+
 
 ### 2. Аутентификация
 
@@ -69,7 +81,32 @@ SDK использует refresh token из cookies браузера:
 3. Access token добавляется к каждому запросу через middleware
 4. При истечении токена происходит автоматическое обновление
 
-### 3. Автоматическая загрузка файлов
+### 3. Автоматическая обработка rate limiting (429)
+
+SDK автоматически повторяет запросы при получении ошибки 429 (Too Many Requests):
+
+1. При ошибке 429 SDK автоматически повторяет запрос
+2. Используется exponential backoff: 1s → 2s → 4s → 8s
+3. По умолчанию 3 попытки с начальной задержкой 1 секунда
+4. Можно настроить через `Config.MaxRetries` и `Config.RetryDelay`
+
+```go
+cfg := itdgo.Config{
+    RefreshToken: "your_token",
+    MaxRetries:   5,                    // 5 попыток вместо 3
+    RetryDelay:   2 * time.Second,      // начальная задержка 2 секунды
+}
+
+// Для отключения retry логики установите MaxRetries = 0
+cfg := itdgo.Config{
+    RefreshToken: "your_token",
+    MaxRetries:   0,  // отключить автоматические повторы
+}
+```
+
+**Важно:** Retry применяется только к ошибкам 429. Другие ошибки (401, 404, 5xx) возвращаются немедленно без повторов.
+
+### 4. Автоматическая загрузка файлов
 
 SDK автоматически загружает файлы на сервер при создании постов и комментариев:
 
@@ -90,7 +127,46 @@ post, err := client.Posts.Create(ctx, "Контент", "/path/to/image.jpg")
 
 **Важно:** Методы `Create`, `CreateWithPoll`, `CreateComment`, `CreateReply` принимают `filePaths ...string`, а не `attachmentIDs`.
 
-### 4. Типы и интерфейсы
+### 5. Десериализация дат с transport.DataOptions
+
+**Критически важно:** Все методы, которые десериализуют типы с полями `time.Time`, **обязаны** использовать `transport.DataOptions`.
+
+`DataOptions` содержит кастомный unmarshaler для `time.Time`, который поддерживает несколько форматов дат от API:
+- RFC3339 (ISO8601): `2024-01-15T10:30:00Z`
+- С микросекундами: `2024-01-15 10:30:00.123456+03`
+- Без микросекунд: `2024-01-15 10:30:00+03`
+
+```go
+// ✅ ПРАВИЛЬНО - используется DataOptions
+var result types.Post
+if err := json.UnmarshalRead(resp.Body, &result, transport.DataOptions); err != nil {
+    return nil, err
+}
+
+// ❌ НЕПРАВИЛЬНО - даты могут распарситься некорректно
+var result types.Post
+if err := json.UnmarshalRead(resp.Body, &result); err != nil {
+    return nil, err
+}
+```
+
+**Типы, требующие DataOptions:**
+- `types.Post` (CreatedAt, EditedAt)
+- `types.CreatedPost*` (CreatedAt)
+- `types.Comment` (CreatedAt)
+- `types.CreatedComment` (CreatedAt)
+- `types.CommentUpdate` (UpdatedAt)
+- `types.User`, `types.Me` (CreatedAt)
+- `types.UpdateProfileResponse` (UpdatedAt)
+- `types.Notification` (CreatedAt, ReadAt)
+- `types.StreamNotification` (CreatedAt, ReadAt)
+
+**Типы, НЕ требующие DataOptions:**
+- `types.Attachment` (нет полей с датами)
+- `types.UserCompact` (нет полей с датами)
+- `types.Hashtag`, `types.SearchResult` (нет полей с датами)
+
+### 6. Типы и интерфейсы
 
 - **types/** — публичные типы и интерфейсы API
 - **internal/dto/** — внутренние DTO для парсинга ответов API
@@ -410,8 +486,8 @@ import (
     "github.com/slipynil/itd-go/types"
 )
 
-// YourIterator предоставляет интерфейс для постраничной загрузки данных.
-type YourIterator interface {
+// Iterator предоставляет интерфейс для постраничной загрузки данных.
+type Iterator interface {
     // HasMore возвращает true, если есть ещё данные для загрузки.
     HasMore() bool
     // Next загружает и возвращает следующую страницу данных.
@@ -423,20 +499,32 @@ type YourIterator interface {
 
 ### 2. Создать функцию-конструктор
 
-В том же файле `internal/api/yourmodule/iterator.go`:
+В том же файле `api/yourmodule/iterator.go`:
 
 ```go
-func newYourIterator(s *Service, limit int) YourIterator {
-    fetch := func(ctx context.Context, token iterator.PageToken) ([]*types.YourType, iterator.PageToken, bool, error) {
-        result, err := s.getYourData(ctx, token.Cursor, limit)
-        if err != nil {
-            return nil, iterator.PageToken{}, false, err
+// newYourData создаёт итератор для получения ваших данных.
+// Имя функции должно описывать ЧТО итерируется.
+func newYourData(s *Service, limit int) Iterator {
+    fetch := func(ctx context.Context, token *iterator.PageToken) ([]*types.YourType, *iterator.PageToken, bool, error) {
+        cursor := ""
+        if token != nil {
+            cursor = token.Cursor
         }
-        next := iterator.PageToken{Cursor: result.NextCursor}
+
+        result, err := s.getYourData(ctx, cursor, limit)
+        if err != nil {
+            return nil, nil, false, err
+        }
+
+        var next *iterator.PageToken
+        if result.HasMore {
+            next = &iterator.PageToken{Cursor: result.NextCursor}
+        }
+
         return result.Items, next, result.HasMore, nil
     }
     
-    return iterator.New[*types.YourType](fetch, iterator.PageToken{})
+    return iterator.New[*types.YourType](fetch, nil)
 }
 ```
 
@@ -445,15 +533,17 @@ func newYourIterator(s *Service, limit int) YourIterator {
 В файле `api/yourmodule/yourmodule.go`:
 
 ```go
-func (s *Service) NewYourIterator(limit int) YourIterator {
-    return newYourIterator(s, limit)
+// NewYourData создаёт итератор для получения ваших данных.
+// Имя метода должно описывать ЧТО итерируется.
+func (s *Service) NewYourData(limit int) Iterator {
+    return newYourData(s, limit)
 }
 ```
 
 ### 4. Использование итератора
 
 ```go
-iter := service.NewYourIterator(20)
+iter := service.NewYourData(20)
 
 for iter.HasMore() {
     items, err := iter.Next(context.Background())
@@ -468,6 +558,9 @@ for iter.HasMore() {
 - Контекст передаётся только в метод `Next(ctx)` при каждом вызове
 - Не передавайте контекст в конструктор итератора - он там не используется
 - Не храните контекст в структуре итератора (антипатерн в Go)
+- `PageToken` используется как указатель: `nil` = первый запрос, `&PageToken{...}` = есть cursor
+- Интерфейс всегда называется просто `Iterator` (в каждом пакете свой)
+- Имена методов и функций должны описывать ЧТО итерируется (NewHashtagPosts, NewPostComments, NewNotifications)
 ```
 
 ## Структура проекта

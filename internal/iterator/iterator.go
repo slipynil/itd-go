@@ -3,6 +3,7 @@ package iterator
 import "context"
 
 // PageToken универсальный токен пагинации — может быть cursor или номером страницы.
+// Используется как указатель (*PageToken), где nil означает первый запрос без токена.
 type PageToken struct {
 	// Cursor - строковый курсор для cursor-based пагинации
 	Cursor string
@@ -15,26 +16,32 @@ type PageToken struct {
 }
 
 // FetchFunc определяет функцию для получения следующей страницы данных.
-// Принимает контекст и курсор, возвращает массив элементов, следующий курсор и флаг hasMore.
-type FetchFunc[T any] func(ctx context.Context, token PageToken) (items []T, next PageToken, hasMore bool, err error)
+// Принимает контекст и токен пагинации (nil для первого запроса),
+// возвращает массив элементов, следующий токен и флаг hasMore.
+type FetchFunc[T any] func(ctx context.Context, token *PageToken) (items []T, next *PageToken, hasMore bool, err error)
 
 // Iterator предоставляет интерфейс для постраничной загрузки данных.
 type Iterator[T any] interface {
 	// HasMore возвращает true, если есть ещё данные для загрузки.
 	HasMore() bool
 	// Next загружает и возвращает следующую страницу данных.
+	// Параметры:
+	//   - ctx: контекст для управления временем жизни запроса
 	Next(ctx context.Context) ([]T, error)
 }
 
 // paginatedIterator реализует Iterator с использованием cursor-based пагинации.
 type paginatedIterator[T any] struct {
 	fetch   FetchFunc[T]
-	token   PageToken
+	token   *PageToken
 	hasMore bool
 }
 
 // New создаёт новый итератор с заданной функцией получения данных.
-func New[T any](fetch FetchFunc[T], startToken PageToken) Iterator[T] {
+// Параметры:
+//   - fetch: функция для загрузки следующей страницы данных
+//   - startToken: начальный токен пагинации (nil для первого запроса)
+func New[T any](fetch FetchFunc[T], startToken *PageToken) Iterator[T] {
 	return &paginatedIterator[T]{
 		fetch:   fetch,
 		token:   startToken,
