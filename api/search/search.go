@@ -53,7 +53,7 @@ func (s *Service) TopHashtags(ctx context.Context, limit int) ([]types.Hashtag, 
 	return result.Data.Hashtag, nil
 }
 
-func (s *Service) TopClans(ctx context.Context) ([]types.Clans, error) {
+func (s *Service) Top10Clans(ctx context.Context) ([]types.Clans, error) {
 	path := "/api/users/stats/top-clans"
 	req, err := s.transport.NewRequest(ctx, "GET", path, nil)
 	if err != nil {
@@ -93,6 +93,25 @@ func (s *Service) getHashtagFeed(ctx context.Context, hashtag string, cursor str
 	defer resp.Body.Close()
 
 	var result hashtagFeedResponse
+	if err := json.UnmarshalRead(resp.Body, &result, transport.DataOptions); err != nil {
+		return nil, err
+	}
+	return &result.Data, nil
+}
+
+func (s *Service) Query(ctx context.Context, query string) (*types.SearchResult, error) {
+	path := fmt.Sprintf("/api/search/?q=%s&userLimit=20&hashtagLimit=20", query)
+	req, err := s.transport.NewRequest(ctx, "GET", path, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := s.transport.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var result searchResponse
 	if err := json.UnmarshalRead(resp.Body, &result); err != nil {
 		return nil, err
 	}

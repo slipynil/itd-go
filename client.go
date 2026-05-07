@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"time"
 
 	"github.com/slipynil/itd-go/api/comments"
 	"github.com/slipynil/itd-go/api/notifications"
@@ -15,13 +16,13 @@ import (
 )
 
 // ITD_DOMAIN - доменное имя ITD API в формате punycode.
-const ITD_DOMAIN string = "xn--d1ah4a.com"
+const itd_domain string = "xn--d1ah4a.com"
 
 // BASE_URL - базовый URL для всех запросов к ITD API.
-const BASE_URL string = "https://" + ITD_DOMAIN
+const base_url string = "https://" + itd_domain
 
 // SDK_VERSION - текущая версия ITD Go SDK.
-const SDK_VERSION string = "0.4.0"
+const sdk_version string = "0.5.0"
 
 // Client - главный клиент ITD SDK для взаимодействия с API.
 // Предоставляет доступ к различным группам API методов.
@@ -52,15 +53,28 @@ type Client struct {
 // Возвращает инициализированный клиент или ошибку при проблемах с аутентификацией.
 func New(ctx context.Context, cfg Config) (*Client, error) {
 	if !cfg.WithoutBanner {
-		printBanner(SDK_VERSION, os.Stdout)
+		printBanner(sdk_version, os.Stdout)
+	}
+
+	// Устанавливаем значения по умолчанию для retry
+	maxRetries := cfg.MaxRetries
+	if maxRetries == 0 {
+		maxRetries = 3 // по умолчанию 3 попытки
+	}
+
+	retryDelay := cfg.RetryDelay
+	if retryDelay == 0 {
+		retryDelay = 1 * time.Second // по умолчанию 1 секунда
 	}
 
 	apiCfg := root.Config{
 		RefreshToken: cfg.RefreshToken,
-		Url:          BASE_URL,
-		Domain:       ITD_DOMAIN,
+		Url:          base_url,
+		Domain:       itd_domain,
 		UserAgent:    cfg.UserAgent,
 		Timeout:      cfg.Timeout,
+		MaxRetries:   maxRetries,
+		RetryDelay:   retryDelay,
 	}
 	root, err := root.New(ctx, apiCfg)
 	if err != nil {

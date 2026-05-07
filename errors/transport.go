@@ -44,6 +44,7 @@ func CheckResponse(resp *http.Response) error {
 	if resp.StatusCode < 400 {
 		return nil
 	}
+	defer resp.Body.Close()
 
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {

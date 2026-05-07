@@ -90,9 +90,18 @@ func buildTransport(cfg Config) http.RoundTripper {
 		base = http.DefaultTransport
 	}
 
-	// Цепочка: base -> statusCheck -> auth
+	// Цепочка: base -> statusCheck -> retry -> auth
 	var transport http.RoundTripper = &statusCheckMiddleware{
 		base: base,
+	}
+
+	// Добавляем retry middleware если MaxRetries > 0
+	if cfg.MaxRetries > 0 {
+		transport = &retryMiddleware{
+			base:       transport,
+			maxRetries: cfg.MaxRetries,
+			baseDelay:  cfg.RetryDelay,
+		}
 	}
 
 	if cfg.AuthClient != nil {

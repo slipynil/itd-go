@@ -20,4 +20,10 @@ type Config struct {
 
 	// Timeout - таймаут для HTTP запросов
 	Timeout time.Duration
+
+	// MaxRetries - максимальное количество повторных попыток при ошибке 429
+	MaxRetries int
+
+	// RetryDelay - начальная задержка перед первой повторной попыткой
+	RetryDelay time.Duration
 }

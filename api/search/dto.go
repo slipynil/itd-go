@@ -25,3 +25,7 @@ type FeedData struct {
 		HasMore    bool   `json:"hasMore"`
 	} `json:"pagination"`
 }
+
+type searchResponse struct {
+	Data types.SearchResult `json:"data"`
+}

@@ -66,6 +66,8 @@ func New(ctx context.Context, cfg Config) (*Client, error) {
 		BaseURL:    cfg.Url,
 		HttpClient: httpClient,
 		AuthClient: authClient,
+		MaxRetries: cfg.MaxRetries,
+		RetryDelay: cfg.RetryDelay,
 	}
 	t := transport.NewClient(transportCfg)
 
