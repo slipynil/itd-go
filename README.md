@@ -113,30 +113,6 @@ type Config struct {
 
 Полный список методов доступен в [документации](https://pkg.go.dev/github.com/slipynil/itd-go).
 
-### Real-time Notifications Stream
-
-```go
-// Получение уведомлений в реальном времени через SSE
-stream, errs := client.Notifications.Stream(ctx)
-
-for {
-	select {
-	case notification, ok := <-stream:
-		if !ok {
-			return // стрим закрыт
-		}
-		fmt.Printf("[%s] %s: %s\n", 
-			notification.Type, 
-			notification.Actor.DisplayName, 
-			notification.Preview)
-		
-	case err := <-errs:
-		log.Printf("Stream error: %v", err)
-		return // при ошибке стрим автоматически закрывается
-	}
-}
-```
-
 ## Go Version Support
 
 Библиотека требует Go 1.26 или выше.
@@ -148,6 +124,7 @@ for {
 - [`examples/user/`](./examples/user/) — работа с пользователями
 - [`examples/comments/`](./examples/comments/) — работа с комментариями
 - [`examples/notifications/`](./examples/notifications/) — работа с уведомлениями
+- [`examples/search/`](./examples/search/) — работа с поиском
 
 ## License
 
