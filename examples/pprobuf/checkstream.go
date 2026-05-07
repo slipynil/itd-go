@@ -5,8 +5,9 @@ package main
 import (
 	"context"
 	"log"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
-	"time"
 
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/k0kubun/pp"
@@ -14,11 +15,11 @@ import (
 )
 
 func main() {
+	go http.ListenAndServe(":6060", nil)
 	ctx := context.Background()
 	cfg := itdgo.Config{
 		RefreshToken: os.Getenv("REFRESH_TOKEN"),
 		UserAgent:    os.Getenv("USER_AGENT"),
-		RetryDelay:   4 * time.Second,
 	}
 
 	client, err := itdgo.New(ctx, cfg)
@@ -26,16 +27,13 @@ func main() {
 		log.Fatal(err)
 	}
 
-	iter, err := client.Search.NewHashtagPosts("nowkie", 5)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	for iter.HasMore() {
-		posts, err := iter.Next(ctx)
-		if err != nil {
+	stream, errs := client.Notifications.Stream(ctx)
+	for {
+		select {
+		case err := <-errs:
 			log.Fatal(err)
+		case notification := <-stream:
+			pp.Println(notification)
 		}
-		pp.Println(posts)
 	}
 }

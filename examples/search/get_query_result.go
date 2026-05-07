@@ -6,7 +6,6 @@ import (
 	"context"
 	"log"
 	"os"
-	"time"
 
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/k0kubun/pp"
@@ -18,24 +17,15 @@ func main() {
 	cfg := itdgo.Config{
 		RefreshToken: os.Getenv("REFRESH_TOKEN"),
 		UserAgent:    os.Getenv("USER_AGENT"),
-		RetryDelay:   4 * time.Second,
 	}
-
 	client, err := itdgo.New(ctx, cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	iter, err := client.Search.NewHashtagPosts("nowkie", 5)
+	result, err := client.Search.Query(ctx, "xmsh")
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	for iter.HasMore() {
-		posts, err := iter.Next(ctx)
-		if err != nil {
-			log.Fatal(err)
-		}
-		pp.Println(posts)
-	}
+	pp.Println(result)
 }
